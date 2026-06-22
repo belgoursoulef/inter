@@ -120,7 +120,7 @@ def process_badge_scan(badge_id):
 
 # --- Background threads ---
 def run_badge_scanner():
-    src = os.environ.get('CAMERA_URL_1', "rtsp://admin:Vivotek29@192.168.32.98/live.sdp")
+    src = os.environ.get('CAMERA_URL_1', "rtsp://192.168.32.98/live2.sdp")
     src = int(src) if src.isdigit() else src
     cap = cv2.VideoCapture(src)
     cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
@@ -132,7 +132,10 @@ def run_badge_scanner():
             time.sleep(5); cap.release(); cap = cv2.VideoCapture(src); cap.set(cv2.CAP_PROP_BUFFERSIZE, 1); continue
         ok, jpeg = cv2.imencode('.jpg', frame)
         if ok: camera_frames["Camera 1 (Entrance)"] = jpeg.tobytes()
-        data, _, _ = qr.detectAndDecode(frame)
+        try:
+            data, _, _ = qr.detectAndDecode(frame)
+        except cv2.error:
+            data = None
         if data:
             now = time.time()
             if data != last_badge or now - last_time > 3:
@@ -141,7 +144,7 @@ def run_badge_scanner():
         time.sleep(0.01)
 
 def run_intrusion_alarm():
-    src = os.environ.get('CAMERA_URL_2', "rtsp://admin:Vivotek29@192.168.32.99/live.sdp")
+    src = os.environ.get('CAMERA_URL_2', "rtsp://192.168.32.99/live2.sdp")
     src = int(src) if src.isdigit() else src
     cap = cv2.VideoCapture(src)
     cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
@@ -280,6 +283,12 @@ def video_feed_2():
 @login_required
 def api_latest_scan():
     return jsonify(latest_access_scan)
+
+@app.route('/api/mqtt')
+@login_required
+def api_mqtt():
+    with data_lock:
+        return jsonify(list(latest_data.values()))
 
 @app.route('/scan/<badge_id>')
 def trigger_scan(badge_id):

@@ -558,3 +558,9 @@ footer .logo-small span { color: var(--blue-lt); }
   0% { transform: translate(-50%, -50%) scale(0.7); opacity: 0; }
   100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
 }
+
+/* ── MQTT SENSOR PULSE ── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--green); }
+  50%       { opacity: 0.4; box-shadow: 0 0 2px var(--green); }
+}

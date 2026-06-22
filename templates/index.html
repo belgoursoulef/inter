@@ -251,7 +251,19 @@
           </div>
         </div>
 
-
+        <!-- MQTT SENSOR CARD -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Capteur IoT — MQTT</span>
+            <span class="card-badge badge-blue" id="mqtt-status-badge">CONNEXION...</span>
+          </div>
+          <div class="card-body" style="padding: 16px;">
+            <div id="mqtt-no-data" style="color: var(--muted); font-size: 13px; text-align:center; padding: 20px 0;">
+              ⏳ En attente de données MQTT...
+            </div>
+            <div id="mqtt-devices"></div>
+          </div>
+        </div>
 
       </div>
 
@@ -391,6 +403,76 @@
 
     // Poll every 1 second
     setInterval(checkLatestScan, 1000);
+
+    // ── MQTT live polling ──────────────────────────────────────────
+    function updateMqtt() {
+      fetch('/api/mqtt')
+        .then(r => r.json())
+        .then(devices => {
+          const badge = document.getElementById('mqtt-status-badge');
+          const noData = document.getElementById('mqtt-no-data');
+          const container = document.getElementById('mqtt-devices');
+
+          if (!devices || devices.length === 0) {
+            badge.textContent = 'EN ATTENTE';
+            badge.className = 'card-badge badge-amber';
+            noData.style.display = 'block';
+            container.innerHTML = '';
+            return;
+          }
+
+          badge.textContent = devices.length + ' CAPTEUR' + (devices.length > 1 ? 'S' : '') + ' EN LIGNE';
+          badge.className = 'card-badge badge-green';
+          noData.style.display = 'none';
+
+          container.innerHTML = devices.map(d => {
+            const temp = d.temperature !== null && d.temperature !== undefined ? d.temperature : '—';
+            const tempNum = parseFloat(temp);
+            const tempColor = isNaN(tempNum) ? 'var(--muted)'
+              : tempNum > 30 ? 'var(--red)'
+              : tempNum > 25 ? '#f5a623'
+              : 'var(--green)';
+            const ts = d.timestamp ? new Date(d.timestamp).toLocaleTimeString('fr-FR') : '—';
+            return `
+              <div style="
+                background: rgba(255,255,255,0.03);
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                padding: 12px 14px;
+                margin-bottom: 10px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+              ">
+                <div>
+                  <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+                    <span style="
+                      width:8px; height:8px; border-radius:50%;
+                      background: var(--green);
+                      display:inline-block;
+                      box-shadow: 0 0 6px var(--green);
+                      animation: pulse 1.5s infinite;
+                    "></span>
+                    <span style="font-size:11px; color:var(--muted); font-family:monospace;">${d.device_id}</span>
+                  </div>
+                  <div style="font-size:10px; color:var(--muted);">${d.topic || ''}</div>
+                  <div style="font-size:10px; color:var(--muted); margin-top:2px;">🕒 ${ts}</div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-size:28px; font-weight:700; color:${tempColor}; line-height:1;">${temp}°C</div>
+                  <div style="font-size:10px; color:var(--muted); margin-top:2px;">Température</div>
+                </div>
+              </div>`;
+          }).join('');
+        })
+        .catch(() => {
+          const badge = document.getElementById('mqtt-status-badge');
+          if (badge) { badge.textContent = 'ERREUR'; badge.className = 'card-badge badge-red'; }
+        });
+    }
+
+    updateMqtt();
+    setInterval(updateMqtt, 3000);
   </script>
 
 </body>

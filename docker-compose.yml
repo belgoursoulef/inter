@@ -6,7 +6,7 @@ services:
       MYSQL_DATABASE: carhorizon
       MYSQL_ROOT_PASSWORD: rootpassword
     ports:
-      - "192.168.32.35:3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -15,7 +15,7 @@ services:
     build: .
     restart: always
     ports:
-      - "192.168.32.35:5001:5001"
+      - "5001:5001"
     environment:
       - DB_HOST=db
       - DB_USER=root
@@ -27,8 +27,8 @@ services:
       - LC_ALL=C.UTF-8
       - BREVO_API_KEY=${BREVO_API_KEY:-your_brevo_api_key_here}
       - NOTIFICATION_EMAILS=${NOTIFICATION_EMAILS:-paul_jacaton@ens.univ-artois.fr,feranceliverson_diahouila@ens.univ-artois.fr,mamadou_balde2@ens.univ-artois.fr,aichasoulef_belgour@ens.univ-artois.fr,tom_rolin@ens.univ-artois.fr}
-      - CAMERA_URL_1=${CAMERA_URL_1:-rtsp://admin:Vivotek29@192.168.32.98/live.sdp}
-      - CAMERA_URL_2=${CAMERA_URL_2:-rtsp://admin:Vivotek29@192.168.32.99/live.sdp}
+      - CAMERA_URL_1=${CAMERA_URL_1:-rtsp://192.168.32.98/live2.sdp}
+      - CAMERA_URL_2=${CAMERA_URL_2:-rtsp://192.168.32.99/live2.sdp}
       - MQTT_BROKER=${MQTT_BROKER:-10.0.0.11}
       - MQTT_PORT=${MQTT_PORT:-1883}
       - MQTT_TOPIC=${MQTT_TOPIC:-application/+/device/A840412051896D52/event/up}

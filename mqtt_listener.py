@@ -1,5 +1,6 @@
 import json
 import os
+import time
 import threading
 
 import paho.mqtt.client as mqtt
@@ -71,13 +72,20 @@ def on_message(client, userdata, msg):
 
 
 def start_mqtt_listener():
-    client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
-    if MQTT_USERNAME:
-        client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
+    while True:
+        try:
+            client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
+            if MQTT_USERNAME:
+                client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
 
-    client.on_connect = on_connect
-    client.on_disconnect = on_disconnect
-    client.on_message = on_message
+            client.on_connect = on_connect
+            client.on_disconnect = on_disconnect
+            client.on_message = on_message
 
-    client.connect_async(MQTT_BROKER, MQTT_PORT, keepalive=60)
-    client.loop_forever()
+            print(f"MQTT: Connexion à {MQTT_BROKER}:{MQTT_PORT}...")
+            client.connect(MQTT_BROKER, MQTT_PORT, keepalive=60)
+            client.loop_forever()
+        except Exception as e:
+            print(f"MQTT: Échec de connexion ({e}), nouvelle tentative dans 10s...")
+            time.sleep(10)
+
