@@ -1,0 +1,11 @@
+Flask==3.0.3
+mysql-connector-python>=8.4.0
+numpy<2.0.0
+opencv-contrib-python-headless==4.9.0.80
+gunicorn==22.0.0
+requests==2.32.3
+paho-mqtt>=2.0.0
+pyotp==2.9.0
+qrcode[pil]==7.4.2
+Pillow==10.3.0
+pyzbar==0.1.9

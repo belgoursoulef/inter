@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Car Horizon — Vérification 2FA</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <style>
+    .otp-inputs {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin: 24px 0;
+    }
+    .otp-inputs input {
+      width: 48px;
+      height: 58px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: 700;
+      font-family: 'Source Code Pro', monospace;
+      background: rgba(10,12,15,0.7);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .otp-inputs input:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 2px rgba(0,217,126,0.15);
+    }
+    .otp-inputs input.filled { border-color: var(--blue-lt); }
+    .ga-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: center;
+      background: rgba(26,108,245,0.08);
+      border: 1px solid rgba(26,108,245,0.2);
+      border-radius: 6px;
+      padding: 10px 16px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: var(--blue-lt);
+    }
+    .login-card { max-width: 420px; }
+  </style>
+</head>
+<body class="login-container">
+<div class="login-card">
+  <div class="login-logo">
+    <span class="car">CAR</span><span class="horizon">HORIZON</span>
+  </div>
+
+  <div class="ga-badge">
+    <span style="font-size:20px;">🔐</span>
+    <span>Ouvrez <strong>Google Authenticator</strong> et entrez le code à 6 chiffres</span>
+  </div>
+
+  {% if error %}
+    <div class="login-error">{{ error }}</div>
+  {% endif %}
+
+  <form action="{{ url_for('two_factor') }}" method="POST" id="otpForm">
+    <div class="otp-inputs">
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric" autofocus>
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric">
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric">
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric">
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric">
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric">
+    </div>
+    <input type="hidden" name="otp" id="otpHidden">
+    <button type="submit" class="btn" style="width:100%; padding:12px;" id="submitBtn" disabled>
+      Vérifier
+    </button>
+  </form>
+
+  <div style="text-align:center; margin-top:16px; font-size:12px; color:var(--muted);">
+    Première connexion ?
+    <a href="{{ url_for('setup_2fa_qr') }}" style="color:var(--blue-lt);">
+      Télécharger le QR code (usage unique)
+    </a>
+  </div>
+  <div style="text-align:center; margin-top:8px; font-size:12px;">
+    <a href="{{ url_for('login') }}" style="color:var(--muted); text-decoration:none;">← Retour</a>
+  </div>
+</div>
+
+<script>
+  const digits = document.querySelectorAll('.otp-digit');
+  const hidden = document.getElementById('otpHidden');
+  const btn    = document.getElementById('submitBtn');
+
+  digits.forEach((el, i) => {
+    el.addEventListener('input', () => {
+      el.value = el.value.replace(/\D/g, '');
+      if (el.value && i < digits.length - 1) digits[i+1].focus();
+      sync();
+    });
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !el.value && i > 0) {
+        digits[i-1].focus(); digits[i-1].value = ''; sync();
+      }
+    });
+    el.addEventListener('paste', e => {
+      e.preventDefault();
+      const txt = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'').slice(0,6);
+      [...txt].forEach((c,j) => { if(digits[j]) digits[j].value = c; });
+      digits[Math.min(txt.length,5)].focus();
+      sync();
+    });
+  });
+
+  function sync() {
+    const code = [...digits].map(d => d.value).join('');
+    hidden.value = code;
+    btn.disabled = code.length < 6;
+    digits.forEach(d => d.classList.toggle('filled', d.value !== ''));
+    if (code.length === 6) setTimeout(() => document.getElementById('otpForm').submit(), 100);
+  }
+</script>
+</body>
+</html>

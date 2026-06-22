@@ -1,0 +1,604 @@
+import os, sys, time, datetime, threading, json, socket, base64, urllib.request
+
+# Force UTF-8 I/O regardless of the system locale
+if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8')
+if sys.stderr.encoding and sys.stderr.encoding.lower() != 'utf-8':
+    sys.stderr.reconfigure(encoding='utf-8')
+
+os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|fflags;nobuffer|flags;low_delay"
+
+import cv2, mysql.connector
+from mysql.connector import pooling
+from flask import Flask, Response, render_template, request, redirect, url_for, send_file, session, jsonify
+from mqtt_listener import start_mqtt_listener, latest_data, data_lock
+from functools import wraps
+
+# --- Config ---
+DB_HOST     = os.environ.get('DB_HOST', 'db')
+DB_USER     = os.environ.get('DB_USER', 'root')
+DB_PASSWORD = os.environ.get('DB_PASSWORD', 'rootpassword')
+DB_NAME     = os.environ.get('DB_NAME', 'carhorizon')
+
+camera_frames = {"Camera 1 (Entrance)": None, "Camera 2 (Garage)": None}
+# Lock to protect frame writes from background threads
+_frame_lock = threading.Lock()
+
+latest_access_scan = {"timestamp": 0.0, "badge": "", "employee": "", "service": "", "status": ""}
+
+FALLBACK_EMPLOYEES = {
+    "EMP001": {"nom": "BELGOUR",   "prenom": "Aicha Soulef",       "service": "IT",            "color": "blue",  "initials": "AB"},
+    "EMP002": {"nom": "ROLIN",     "prenom": "Tom",                 "service": "Production",    "color": "amber", "initials": "TR"},
+    "EMP003": {"nom": "Balde",     "prenom": "Mamadou",             "service": "Administratif", "color": "green", "initials": "MB"},
+    "EMP004": {"nom": "Diahouila", "prenom": "Ferancel Iverson",    "service": "Production",    "color": "amber", "initials": "FD"},
+    "EMP005": {"nom": "Jacaton",   "prenom": "Paul",                "service": "IT",            "color": "blue",  "initials": "PJ"},
+}
+
+FALLBACK_DB_LOGS = [
+    {"time": "09:14:32", "level": "INFO",    "message": "Access GRANTED - Aicha Soulef BELGOUR (IT)"},
+    {"time": "08:12:03", "level": "WARNING", "message": "Access DENIED - Unknown badge scanned: BADGE-4921X"},
+    {"time": "00:00:01", "level": "INFO",    "message": "Systeme de surveillance demarre"},
+]
+
+# --- DB connection pool ---
+_db_pool = None
+_db_pool_lock = threading.Lock()
+
+def get_db_pool():
+    global _db_pool
+    if _db_pool is not None:
+        return _db_pool
+    with _db_pool_lock:
+        if _db_pool is None:
+            try:
+                _db_pool = pooling.MySQLConnectionPool(
+                    pool_name="carhorizon_pool",
+                    pool_size=5,
+                    host=DB_HOST, user=DB_USER,
+                    password=DB_PASSWORD, database=DB_NAME,
+                    connect_timeout=2,
+                )
+                print("[DB] Connection pool initialized.")
+            except Exception as e:
+                print(f"[DB] Pool init failed: {e}")
+        return _db_pool
+
+def db_query(query, params=(), fetch=False, commit=False, dictionary=False):
+    pool = get_db_pool()
+    conn = cursor = None
+    try:
+        conn = pool.get_connection() if pool else mysql.connector.connect(
+            host=DB_HOST, user=DB_USER, password=DB_PASSWORD,
+            database=DB_NAME, connect_timeout=2,
+        )
+        cursor = conn.cursor(dictionary=dictionary)
+        cursor.execute(query, params)
+        if commit:
+            conn.commit()
+        if fetch:
+            return cursor.fetchall()
+    except Exception as e:
+        print(f"DB Error: {e}")
+        if commit:
+            raise
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            try:
+                conn.close()   # returns connection to pool
+            except Exception:
+                pass
+    return None
+
+# --- Employee cache (refresh every 60 s) ---
+_employee_cache = {"data": None, "ts": 0.0}
+_EMPLOYEE_TTL   = 60.0
+
+def get_employees():
+    now = time.time()
+    if _employee_cache["data"] is not None and now - _employee_cache["ts"] < _EMPLOYEE_TTL:
+        return _employee_cache["data"]
+    rows = db_query(
+        "SELECT badge_id, nom, prenom, service, color, initials FROM employees",
+        fetch=True, dictionary=True,
+    )
+    result = (
+        {r["badge_id"]: {k: r[k] for k in r if k != "badge_id"} for r in rows}
+        if rows else FALLBACK_EMPLOYEES
+    )
+    _employee_cache["data"] = result
+    _employee_cache["ts"]   = now
+    return result
+
+def insert_log(device, level, msg):
+    ts = datetime.datetime.now().strftime("%H:%M:%S")
+    FALLBACK_DB_LOGS.insert(0, {"time": ts, "level": level, "message": msg})
+    if len(FALLBACK_DB_LOGS) > 30:
+        FALLBACK_DB_LOGS.pop()
+    try:
+        db_query(
+            "INSERT INTO device_logs (device_name, log_level, message) VALUES (%s, %s, %s)",
+            (device, level, msg), commit=True,
+        )
+    except Exception as e:
+        print(f"[insert_log] DB error (non-fatal): {e}")
+
+# --- Brevo email alert ---
+def send_alert(subject, body, attachment_bytes=None):
+    api_key    = os.environ.get("BREVO_API_KEY")
+    emails_raw = os.environ.get("NOTIFICATION_EMAILS") or os.environ.get("NOTIFICATION_EMAIL", "")
+    recipients = [{"email": e.strip()} for e in emails_raw.split(",") if e.strip()]
+    if not api_key or not recipients:
+        return
+    _orig = socket.getaddrinfo
+    socket.getaddrinfo = lambda h, p, f=0, t=0, pr=0, fl=0: _orig(h, p, socket.AF_INET, t, pr, fl)
+    try:
+        att = [{"name": "alert.jpg", "content": base64.b64encode(attachment_bytes).decode()}] if attachment_bytes else []
+        payload = json.dumps({
+            "sender":      {"name": "Car Horizon Security", "email": "carhorizonalert@gmail.com"},
+            "to":          recipients,
+            "subject":     subject,
+            "textContent": body,
+            **( {"attachment": att} if att else {}),
+        }).encode()
+        req = urllib.request.Request(
+            "https://api.brevo.com/v3/smtp/email", data=payload,
+            headers={"api-key": api_key, "Content-Type": "application/json"}, method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            print(f"Alert sent [{subject}]: {r.read().decode()}")
+    except Exception as e:
+        print(f"Alert error: {e}")
+    finally:
+        socket.getaddrinfo = _orig
+
+# --- Badge scan ---
+def process_badge_scan(badge_id):
+    now      = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    emps     = get_employees()
+    emp      = emps.get(badge_id)
+    valid    = emp is not None
+    statut   = "AUTORISE" if valid else "REFUSE"
+    emp_name = f"{emp['prenom']} {emp['nom']}" if valid else "Inconnu"
+    service  = emp["service"] if valid else "Inconnu"
+    msg      = f"Access GRANTED - {emp_name} ({service})" if valid else f"Access DENIED - Unknown badge: {badge_id}"
+    print(f"[{now}] {statut}: {msg}")
+    insert_log("Camera 1 (Entrance)", "INFO" if valid else "WARNING", msg)
+    if not valid:
+        threading.Thread(
+            target=send_alert,
+            args=(
+                f"[ALERTE QR INCONNU] Car Horizon - {now}",
+                f"QR code inconnu scanne a {now}.\nCode: {badge_id}\n\nCar Horizon Security",
+            ),
+            daemon=True,
+        ).start()
+    try:
+        with open("historique_acces.csv", "a", encoding="utf-8") as f:
+            f.write(f"{now},{badge_id},{statut}\n")
+    except Exception as e:
+        print(f"CSV error: {e}")
+    latest_access_scan.update({
+        "timestamp": time.time(), "badge": badge_id,
+        "employee": emp_name, "service": service, "status": statut,
+    })
+    return statut, emp_name
+
+# --- QR decoding helpers ---
+# We try three decoders in order of reliability:
+#   1. pyzbar  — fastest, best detection rate on real cameras
+#   2. cv2.QRCodeDetectorAruco — better than the basic detector, part of contrib
+#   3. cv2.QRCodeDetector      — basic fallback
+
+try:
+    from pyzbar.pyzbar import decode as pyzbar_decode
+    _HAS_PYZBAR = True
+    print("[QR] pyzbar available ✓")
+except ImportError:
+    _HAS_PYZBAR = False
+    print("[QR] pyzbar not available, using OpenCV only")
+
+try:
+    _qr_aruco = cv2.QRCodeDetectorAruco()
+    _HAS_ARUCO = True
+    print("[QR] QRCodeDetectorAruco available ✓")
+except AttributeError:
+    _HAS_ARUCO = False
+    print("[QR] QRCodeDetectorAruco not available (opencv-contrib missing?)")
+
+_qr_basic = cv2.QRCodeDetector()
+
+
+def decode_qr(frame):
+    """
+    Try every available QR decoder and return the first non-empty string found.
+    Preprocesses the frame to improve detection in low-light / low-res RTSP feeds.
+    """
+    # --- preprocessing: upscale + sharpen ---
+    h, w = frame.shape[:2]
+    if w < 640:
+        frame = cv2.resize(frame, (640, int(640 * h / w)), interpolation=cv2.INTER_LINEAR)
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    # adaptive threshold helps with uneven lighting
+    thresh = cv2.adaptiveThreshold(
+        gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
+    )
+
+    # 1. pyzbar on both gray and thresholded
+    if _HAS_PYZBAR:
+        for img in (gray, thresh):
+            try:
+                results = pyzbar_decode(img)
+                for r in results:
+                    data = r.data.decode("utf-8", errors="ignore").strip()
+                    if data:
+                        return data
+            except Exception:
+                pass
+
+    # 2. QRCodeDetectorAruco
+    if _HAS_ARUCO:
+        for img in (frame, cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)):
+            try:
+                data, _, _ = _qr_aruco.detectAndDecode(img)
+                if data:
+                    return data
+            except cv2.error:
+                pass
+
+    # 3. Basic QRCodeDetector
+    for img in (frame, cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)):
+        try:
+            data, _, _ = _qr_basic.detectAndDecode(img)
+            if data:
+                return data
+        except cv2.error:
+            pass
+
+    return None
+
+
+# --- Background threads ---
+def run_badge_scanner():
+    src = os.environ.get("CAMERA_URL_1", "rtsp://192.168.32.98/live2.sdp")
+    src = int(src) if src.isdigit() else src
+    last_badge, last_time = None, 0
+    frame_count = 0
+    while True:
+        try:
+            cap = cv2.VideoCapture(src)
+            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                ok, jpeg = cv2.imencode(".jpg", frame)
+                if ok:
+                    with _frame_lock:
+                        camera_frames["Camera 1 (Entrance)"] = jpeg.tobytes()
+                # Run QR decode every 3rd frame to save CPU
+                frame_count += 1
+                if frame_count % 3 == 0:
+                    data = decode_qr(frame)
+                    if data:
+                        now = time.time()
+                        if data != last_badge or now - last_time > 3:
+                            last_badge, last_time = data, now
+                            print(f"[QR] Detected: {data}")
+                            process_badge_scan(data)
+                time.sleep(0.01)
+        except Exception as e:
+            print(f"[badge_scanner] Unexpected error: {e}")
+        finally:
+            try:
+                cap.release()
+            except Exception:
+                pass
+        print("[badge_scanner] Camera lost, retrying in 5 s...")
+        time.sleep(5)
+
+def run_intrusion_alarm():
+    src = os.environ.get("CAMERA_URL_2", "rtsp://192.168.32.99/live2.sdp")
+    src = int(src) if src.isdigit() else src
+    hog = cv2.HOGDescriptor()
+    hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+    last_alert = 0
+    while True:
+        try:
+            cap = cv2.VideoCapture(src)
+            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                h, w = frame.shape[:2]
+                small = cv2.resize(frame, (400, int(400 * h / w)))
+                rects, _ = hog.detectMultiScale(small, winStride=(8, 8), padding=(8, 8), scale=1.05)
+                for (x, y, rw, rh) in rects:
+                    sx = w / 400
+                    cv2.rectangle(frame, (int(x*sx), int(y*sx)), (int((x+rw)*sx), int((y+rh)*sx)), (0, 0, 255), 2)
+                ok, jpeg = cv2.imencode(".jpg", frame)
+                if ok:
+                    with _frame_lock:
+                        camera_frames["Camera 2 (Garage)"] = jpeg.tobytes()
+                hour = datetime.datetime.now().hour
+                if len(rects) > 0 and (hour >= 20 or hour < 7) and time.time() - last_alert > 30:
+                    last_alert = time.time()
+                    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    insert_log("Camera 2 (Garage)", "ALERT", "Intrusion detected - Human silhouette during off-hours!")
+                    threading.Thread(
+                        target=send_alert,
+                        args=(
+                            f"[ALERTE INTRUSION] Car Horizon - {now}",
+                            f"Intrusion detectee (silhouette humaine) a {now} dans le garage.\n\nCar Horizon Security",
+                            jpeg.tobytes() if ok else None,
+                        ),
+                        daemon=True,
+                    ).start()
+                    try:
+                        with open("historique_intrusion.csv", "a", encoding="utf-8") as f:
+                            f.write(f"{now},INTRUSION\n")
+                    except Exception as e:
+                        print(e)
+                time.sleep(0.01)
+        except Exception as e:
+            print(f"[intrusion_alarm] Unexpected error: {e}")
+        finally:
+            try:
+                cap.release()
+            except Exception:
+                pass
+        print("[intrusion_alarm] Camera lost, retrying in 5 s...")
+        time.sleep(5)
+
+# --- Flask app ---
+app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "carhorizon-secret-key-2026")
+
+@app.after_request
+def set_utf8_charset(response):
+    ct = response.content_type
+    if "text/" in ct and "charset" not in ct:
+        response.content_type = ct + "; charset=utf-8"
+    return response
+
+def login_required(f):
+    @wraps(f)
+    def wrap(*a, **kw):
+        return f(*a, **kw) if session.get("authenticated") else redirect(url_for("login"))
+    return wrap
+
+# --- Snapshot endpoints (replaces MJPEG) ---
+# The browser polls /api/frame/<n> at ~10 fps via JS fetch().
+# Each request is a single fast Response — no thread stays blocked.
+
+def read_access_logs():
+    logs = []
+    if os.path.exists("historique_acces.csv"):
+        try:
+            emps = get_employees()
+            with open("historique_acces.csv", "r", encoding="utf-8") as f:
+                for line in reversed(f.readlines()):
+                    parts = line.strip().split(",")
+                    if len(parts) >= 3:
+                        ts, badge, status = parts[0], parts[1], parts[2]
+                        emp = emps.get(badge, {})
+                        logs.append({
+                            "time":     ts.split(" ")[1] if " " in ts else ts,
+                            "badge":    badge,
+                            "employee": f"{emp.get('prenom','')} {emp.get('nom','')}".strip() or "—",
+                            "service":  emp.get("service", "Inconnu"),
+                            "status":   status,
+                        })
+        except Exception as e:
+            print(e)
+    return logs[:8] or [
+        {"time": "09:14:32", "badge": "EMP001", "employee": "Aicha Soulef BELGOUR", "service": "IT",         "status": "AUTORISE"},
+        {"time": "09:02:17", "badge": "EMP002", "employee": "Tom ROLIN",             "service": "Production", "status": "AUTORISE"},
+        {"time": "08:12:03", "badge": "UNKNWN", "employee": "—",                     "service": "Inconnu",    "status": "REFUSE"},
+    ]
+
+def get_kpis():
+    logs  = read_access_logs()
+    emps  = get_employees()   # uses cache — no extra DB hit
+    auth  = sum(1 for l in logs if l["status"] == "AUTORISE")
+    denied = len(logs) - auth
+    active = len(set(l["badge"] for l in logs if l["status"] == "AUTORISE" and l["badge"] in emps))
+    intrusions = 0
+    if os.path.exists("historique_intrusion.csv"):
+        try:
+            with open("historique_intrusion.csv") as f:
+                intrusions = len(f.readlines())
+        except Exception:
+            pass
+    total = auth + denied
+    return {
+        "authorized":        auth,
+        "denied":            denied,
+        "active_employees":  active,
+        "intrusions":        intrusions,
+        "total_scans":       total,
+        "auth_rate":         round(auth / total * 100) if total else 100,
+    }
+
+def get_device_logs():
+    rows = db_query(
+        "SELECT timestamp, log_level, message FROM device_logs ORDER BY timestamp DESC LIMIT 30",
+        fetch=True,
+    )
+    if rows:
+        return [{
+            "time":    r[0].strftime("%H:%M:%S") if isinstance(r[0], datetime.datetime) else str(r[0]),
+            "level":   r[1],
+            "message": r[2],
+        } for r in rows]
+    return FALLBACK_DB_LOGS
+
+# --- Google Authenticator TOTP 2FA ---
+import pyotp, qrcode, io
+
+def get_totp_secret():
+    secret = os.environ.get("TOTP_SECRET", "").strip()
+    if not secret:
+        secret = pyotp.random_base32()
+        print(f"[2FA] ⚠️  No TOTP_SECRET set. Generated one for this session: {secret}")
+        print(f"[2FA] ⚠️  Add TOTP_SECRET={secret} to your .env to make it permanent.")
+    return secret
+
+TOTP_SECRET = get_totp_secret()
+
+# One-shot QR download: once fetched, the token is invalidated.
+_qr_token_used = False
+_qr_token_lock = threading.Lock()
+
+def _generate_qr_png() -> bytes:
+    totp = pyotp.TOTP(TOTP_SECRET)
+    uri  = totp.provisioning_uri(name="Car Horizon", issuer_name="Car Horizon Security")
+    img  = qrcode.make(uri)
+    buf  = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+# --- Routes ---
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if session.get("authenticated"):
+        return redirect(url_for("surveillance"))
+    error = None
+    if request.method == "POST":
+        if request.form.get("password") == os.environ.get("APP_PASSWORD", "pepweb-1"):
+            session["pw_ok"] = True
+            return redirect(url_for("two_factor"))
+        error = "Mot de passe incorrect."
+    return render_template("login.html", error=error)
+
+@app.route("/2fa", methods=["GET", "POST"])
+def two_factor():
+    if session.get("authenticated"):
+        return redirect(url_for("surveillance"))
+    if not session.get("pw_ok"):
+        return redirect(url_for("login"))
+    error = None
+    if request.method == "POST":
+        entered = request.form.get("otp", "").strip()
+        totp = pyotp.TOTP(TOTP_SECRET)
+        if totp.verify(entered, valid_window=1):
+            session.pop("pw_ok", None)
+            session["authenticated"] = True
+            return redirect(url_for("surveillance"))
+        error = "Code incorrect. Vérifiez l'heure de votre appareil."
+    return render_template("2fa.html", error=error)
+
+@app.route("/setup-2fa/qr")
+@login_required
+def setup_2fa_qr():
+    """
+    One-shot QR code download.
+    The first authenticated request returns the PNG.
+    Every subsequent request returns 410 Gone — the QR cannot be replayed.
+    """
+    global _qr_token_used
+    with _qr_token_lock:
+        if _qr_token_used:
+            return (
+                "<h2 style=\'font-family:monospace\'>QR code déjà téléchargé.</h2>"
+                "<p style=\'font-family:monospace\'>Pour régénérer, redémarrez le conteneur avec un nouveau TOTP_SECRET.</p>",
+                410,
+            )
+        _qr_token_used = True
+
+    png = _generate_qr_png()
+    buf = io.BytesIO(png)
+    buf.seek(0)
+    return send_file(
+        buf,
+        mimetype="image/png",
+        as_attachment=True,
+        download_name="carhorizon_2fa_qr.png",
+    )
+
+@app.route("/setup-2fa")
+def setup_2fa():
+    """Redirect old URL to dashboard; setup now done via one-shot download."""
+    return redirect(url_for("surveillance"))
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+@app.route("/")
+@app.route("/surveillance")
+@login_required
+def surveillance():
+    return render_template(
+        "index.html",
+        employees=get_employees(),
+        access_logs=read_access_logs(),
+        device_logs=get_device_logs(),
+        kpis=get_kpis(),
+    )
+
+@app.route("/api/frame/1")
+def frame_1():
+    with _frame_lock:
+        fb = camera_frames.get("Camera 1 (Entrance)")
+    if not fb:
+        return "", 204   # No Content — camera offline
+    return Response(fb, mimetype="image/jpeg",
+                    headers={"Cache-Control": "no-store"})
+
+@app.route("/api/frame/2")
+def frame_2():
+    with _frame_lock:
+        fb = camera_frames.get("Camera 2 (Garage)")
+    if not fb:
+        return "", 204   # No Content — camera offline
+    return Response(fb, mimetype="image/jpeg",
+                    headers={"Cache-Control": "no-store"})
+
+@app.route("/api/latest_scan")
+@login_required
+def api_latest_scan():
+    return jsonify(latest_access_scan)
+
+@app.route("/api/mqtt")
+@login_required
+def api_mqtt():
+    with data_lock:
+        return jsonify(list(latest_data.values()))
+
+@app.route("/api/access_logs")
+@login_required
+def api_access_logs():
+    return jsonify(read_access_logs())
+
+@app.route("/scan/<badge_id>")
+def trigger_scan(badge_id):
+    statut, emp_name = process_badge_scan(badge_id)
+    return {"status": "triggered", "badge": badge_id, "employee": emp_name, "access_status": statut}
+
+def get_or_create_csv(filename, headers):
+    if not os.path.exists(filename):
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(headers + "\n")
+    return send_file(filename, mimetype="text/csv", as_attachment=True, download_name=filename)
+
+@app.route("/download/acces")
+@login_required
+def download_acces():
+    return get_or_create_csv("historique_acces.csv", "horodatage,badge_id,statut")
+
+@app.route("/download/intrusion")
+@login_required
+def download_intrusion():
+    return get_or_create_csv("historique_intrusion.csv", "horodatage,statut")
+
+# --- Start background threads ---
+threading.Thread(target=run_badge_scanner,   daemon=True).start()
+threading.Thread(target=run_intrusion_alarm, daemon=True).start()
+threading.Thread(target=start_mqtt_listener, daemon=True).start()
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5001, debug=False)
