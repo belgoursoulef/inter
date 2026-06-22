@@ -25,144 +25,98 @@
       border-radius: 6px;
       outline: none;
       transition: border-color 0.2s, box-shadow 0.2s;
-      caret-color: var(--green);
     }
     .otp-inputs input:focus {
       border-color: var(--green);
       box-shadow: 0 0 0 2px rgba(0,217,126,0.15);
     }
-    .otp-inputs input.filled {
-      border-color: var(--blue-lt);
-    }
-    .shield-icon {
-      font-size: 40px;
-      text-align: center;
-      margin-bottom: 12px;
-    }
-    .resend-link {
-      text-align: center;
-      margin-top: 16px;
-      font-size: 12px;
-      color: var(--muted);
-    }
-    .resend-link a {
+    .otp-inputs input.filled { border-color: var(--blue-lt); }
+    .ga-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: center;
+      background: rgba(26,108,245,0.08);
+      border: 1px solid rgba(26,108,245,0.2);
+      border-radius: 6px;
+      padding: 10px 16px;
+      margin-bottom: 20px;
+      font-size: 13px;
       color: var(--blue-lt);
-      text-decoration: none;
     }
-    .resend-link a:hover { text-decoration: underline; }
-    .timer-text {
-      text-align: center;
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 8px;
-    }
-    #countdown { color: var(--amber); font-weight: 600; }
     .login-card { max-width: 420px; }
   </style>
 </head>
 <body class="login-container">
-
 <div class="login-card">
   <div class="login-logo">
     <span class="car">CAR</span><span class="horizon">HORIZON</span>
   </div>
 
-  <div class="shield-icon">🔐</div>
-
-  <p style="color: var(--muted); text-align: center; font-size: 13px; margin-bottom: 4px;">
-    Un code à 6 chiffres a été envoyé à votre adresse e-mail.
-  </p>
-  <p style="color: var(--muted); text-align: center; font-size: 12px; margin-bottom: 8px;">
-    Vérifiez votre boîte mail et entrez le code ci-dessous.
-  </p>
+  <div class="ga-badge">
+    <span style="font-size:20px;">🔐</span>
+    <span>Ouvrez <strong>Google Authenticator</strong> et entrez le code à 6 chiffres</span>
+  </div>
 
   {% if error %}
-    <div class="login-error" style="margin-bottom: 0;">{{ error }}</div>
+    <div class="login-error">{{ error }}</div>
   {% endif %}
 
   <form action="{{ url_for('two_factor') }}" method="POST" id="otpForm">
     <div class="otp-inputs">
-      <input type="text" maxlength="1" class="otp-digit" id="d1" inputmode="numeric" pattern="[0-9]" autofocus>
-      <input type="text" maxlength="1" class="otp-digit" id="d2" inputmode="numeric" pattern="[0-9]">
-      <input type="text" maxlength="1" class="otp-digit" id="d3" inputmode="numeric" pattern="[0-9]">
-      <input type="text" maxlength="1" class="otp-digit" id="d4" inputmode="numeric" pattern="[0-9]">
-      <input type="text" maxlength="1" class="otp-digit" id="d5" inputmode="numeric" pattern="[0-9]">
-      <input type="text" maxlength="1" class="otp-digit" id="d6" inputmode="numeric" pattern="[0-9]">
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric" autofocus>
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric">
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric">
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric">
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric">
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric">
     </div>
-    <!-- Hidden field that aggregates all digits -->
     <input type="hidden" name="otp" id="otpHidden">
-
-    <button type="submit" class="btn" style="width:100%; padding:12px 14px;" id="submitBtn" disabled>
-      Vérifier le Code
+    <button type="submit" class="btn" style="width:100%; padding:12px;" id="submitBtn" disabled>
+      Vérifier
     </button>
   </form>
 
-  <div class="timer-text">Code valide pendant <span id="countdown">5:00</span></div>
-
-  <div class="resend-link">
-    <a href="{{ url_for('login') }}">← Retour à la connexion</a>
+  <div style="text-align:center; margin-top:16px; font-size:12px; color:var(--muted);">
+    Pas encore configuré ? <a href="{{ url_for('setup_2fa') }}" style="color:var(--blue-lt);">Scanner le QR code</a>
+  </div>
+  <div style="text-align:center; margin-top:8px; font-size:12px;">
+    <a href="{{ url_for('login') }}" style="color:var(--muted); text-decoration:none;">← Retour</a>
   </div>
 </div>
 
 <script>
   const digits = document.querySelectorAll('.otp-digit');
-  const hidden  = document.getElementById('otpHidden');
-  const submitBtn = document.getElementById('submitBtn');
+  const hidden = document.getElementById('otpHidden');
+  const btn    = document.getElementById('submitBtn');
 
-  digits.forEach((el, idx) => {
+  digits.forEach((el, i) => {
     el.addEventListener('input', () => {
-      // Only allow digits
       el.value = el.value.replace(/\D/g, '');
-      if (el.value && idx < digits.length - 1) digits[idx + 1].focus();
-      updateHidden();
+      if (el.value && i < digits.length - 1) digits[i+1].focus();
+      sync();
     });
     el.addEventListener('keydown', e => {
-      if (e.key === 'Backspace' && !el.value && idx > 0) {
-        digits[idx - 1].focus();
-        digits[idx - 1].value = '';
-        updateHidden();
+      if (e.key === 'Backspace' && !el.value && i > 0) {
+        digits[i-1].focus(); digits[i-1].value = ''; sync();
       }
     });
     el.addEventListener('paste', e => {
       e.preventDefault();
-      const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
-      [...text].forEach((ch, i) => { if (digits[i]) digits[i].value = ch; });
-      if (digits[Math.min(text.length, 5)]) digits[Math.min(text.length, 5)].focus();
-      updateHidden();
+      const txt = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'').slice(0,6);
+      [...txt].forEach((c,j) => { if(digits[j]) digits[j].value = c; });
+      digits[Math.min(txt.length,5)].focus();
+      sync();
     });
   });
 
-  function updateHidden() {
+  function sync() {
     const code = [...digits].map(d => d.value).join('');
     hidden.value = code;
-    submitBtn.disabled = code.length < 6;
+    btn.disabled = code.length < 6;
     digits.forEach(d => d.classList.toggle('filled', d.value !== ''));
+    if (code.length === 6) setTimeout(() => document.getElementById('otpForm').submit(), 100);
   }
-
-  // Submit on 6th digit auto-fill
-  digits[5].addEventListener('input', () => {
-    if ([...digits].every(d => d.value)) {
-      setTimeout(() => document.getElementById('otpForm').submit(), 150);
-    }
-  });
-
-  // 5-minute countdown
-  let seconds = 300;
-  const countdownEl = document.getElementById('countdown');
-  const timer = setInterval(() => {
-    seconds--;
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    countdownEl.textContent = `${m}:${s.toString().padStart(2, '0')}`;
-    if (seconds <= 60) countdownEl.style.color = 'var(--red)';
-    if (seconds <= 0) {
-      clearInterval(timer);
-      countdownEl.textContent = 'Expiré';
-      submitBtn.disabled = true;
-      window.location.href = "{{ url_for('login') }}";
-    }
-  }, 1000);
 </script>
-
 </body>
 </html>
