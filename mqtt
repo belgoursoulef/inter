@@ -171,7 +171,7 @@ def process_badge_scan(badge_id):
             args=(
                 f"[ALERTE QR INCONNU] Car Horizon - {now}",
                 f"QR code inconnu scanne a {now}.\nCode: {badge_id}\n\nCar Horizon Security",
-            ),
+                ),
             daemon=True,
         ).start()
     try:
@@ -186,11 +186,6 @@ def process_badge_scan(badge_id):
     return statut, emp_name
 
 # --- QR decoding helpers ---
-# We try three decoders in order of reliability:
-#   1. pyzbar  — fastest, best detection rate on real cameras
-#   2. cv2.QRCodeDetectorAruco — better than the basic detector, part of contrib
-#   3. cv2.QRCodeDetector      — basic fallback
-
 try:
     from pyzbar.pyzbar import decode as pyzbar_decode
     _HAS_PYZBAR = True
@@ -209,23 +204,15 @@ except AttributeError:
 
 _qr_basic = cv2.QRCodeDetector()
 
-
 def decode_qr(frame):
-    """
-    Try every available QR decoder and return the first non-empty string found.
-    Preprocesses the frame to improve detection in low-light / low-res RTSP feeds.
-    """
-    # --- preprocessing: upscale + sharpen ---
     h, w = frame.shape[:2]
     if w < 640:
         frame = cv2.resize(frame, (640, int(640 * h / w)), interpolation=cv2.INTER_LINEAR)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    # adaptive threshold helps with uneven lighting
     thresh = cv2.adaptiveThreshold(
         gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
     )
 
-    # 1. pyzbar on both gray and thresholded
     if _HAS_PYZBAR:
         for img in (gray, thresh):
             try:
@@ -237,7 +224,6 @@ def decode_qr(frame):
             except Exception:
                 pass
 
-    # 2. QRCodeDetectorAruco
     if _HAS_ARUCO:
         for img in (frame, cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)):
             try:
@@ -247,7 +233,6 @@ def decode_qr(frame):
             except cv2.error:
                 pass
 
-    # 3. Basic QRCodeDetector
     for img in (frame, cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)):
         try:
             data, _, _ = _qr_basic.detectAndDecode(img)
@@ -257,7 +242,6 @@ def decode_qr(frame):
             pass
 
     return None
-
 
 # --- Background threads ---
 def run_badge_scanner():
@@ -277,7 +261,6 @@ def run_badge_scanner():
                 if ok:
                     with _frame_lock:
                         camera_frames["Camera 1 (Entrance)"] = jpeg.tobytes()
-                # Run QR decode every 3rd frame to save CPU
                 frame_count += 1
                 if frame_count % 3 == 0:
                     data = decode_qr(frame)
@@ -369,10 +352,6 @@ def login_required(f):
         return f(*a, **kw) if session.get("authenticated") else redirect(url_for("login"))
     return wrap
 
-# --- Snapshot endpoints (replaces MJPEG) ---
-# The browser polls /api/frame/<n> at ~10 fps via JS fetch().
-# Each request is a single fast Response — no thread stays blocked.
-
 def read_access_logs():
     logs = []
     if os.path.exists("historique_acces.csv"):
@@ -401,7 +380,7 @@ def read_access_logs():
 
 def get_kpis():
     logs  = read_access_logs()
-    emps  = get_employees()   # uses cache — no extra DB hit
+    emps  = get_employees()
     auth  = sum(1 for l in logs if l["status"] == "AUTORISE")
     denied = len(logs) - auth
     active = len(set(l["badge"] for l in logs if l["status"] == "AUTORISE" and l["badge"] in emps))
@@ -443,12 +422,9 @@ def get_totp_secret():
     if not secret:
         secret = pyotp.random_base32()
         print(f"[2FA] ⚠️  No TOTP_SECRET set. Generated one for this session: {secret}")
-        print(f"[2FA] ⚠️  Add TOTP_SECRET={secret} to your .env to make it permanent.")
     return secret
 
 TOTP_SECRET = get_totp_secret()
-
-# One-shot QR download: once fetched, the token is invalidated.
 _qr_token_used = False
 _qr_token_lock = threading.Lock()
 
@@ -493,17 +469,11 @@ def two_factor():
 @app.route("/setup-2fa/qr")
 @login_required
 def setup_2fa_qr():
-    """
-    One-shot QR code download.
-    The first authenticated request returns the PNG.
-    Every subsequent request returns 410 Gone — the QR cannot be replayed.
-    """
     global _qr_token_used
     with _qr_token_lock:
         if _qr_token_used:
             return (
-                "<h2 style=\'font-family:monospace\'>QR code déjà téléchargé.</h2>"
-                "<p style=\'font-family:monospace\'>Pour régénérer, redémarrez le conteneur avec un nouveau TOTP_SECRET.</p>",
+                "<h2 style='font-family:monospace'>QR code déjà téléchargé.</h2>",
                 410,
             )
         _qr_token_used = True
@@ -520,7 +490,6 @@ def setup_2fa_qr():
 
 @app.route("/setup-2fa")
 def setup_2fa():
-    """Redirect old URL to dashboard; setup now done via one-shot download."""
     return redirect(url_for("surveillance"))
 
 @app.route("/logout")
@@ -532,8 +501,9 @@ def logout():
 @app.route("/surveillance")
 @login_required
 def surveillance():
+    # Changé index.html par surveillance.html pour correspondre à votre fichier
     return render_template(
-        "index.html",
+        "surveillance.html",
         employees=get_employees(),
         access_logs=read_access_logs(),
         device_logs=get_device_logs(),
@@ -545,18 +515,16 @@ def frame_1():
     with _frame_lock:
         fb = camera_frames.get("Camera 1 (Entrance)")
     if not fb:
-        return "", 204   # No Content — camera offline
-    return Response(fb, mimetype="image/jpeg",
-                    headers={"Cache-Control": "no-store"})
+        return "", 204
+    return Response(fb, mimetype="image/jpeg", headers={"Cache-Control": "no-store"})
 
 @app.route("/api/frame/2")
 def frame_2():
     with _frame_lock:
         fb = camera_frames.get("Camera 2 (Garage)")
     if not fb:
-        return "", 204   # No Content — camera offline
-    return Response(fb, mimetype="image/jpeg",
-                    headers={"Cache-Control": "no-store"})
+        return "", 204
+    return Response(fb, mimetype="image/jpeg", headers={"Cache-Control": "no-store"})
 
 @app.route("/api/latest_scan")
 @login_required
@@ -566,8 +534,27 @@ def api_latest_scan():
 @app.route("/api/mqtt")
 @login_required
 def api_mqtt():
+    """
+    Formate les données brutes issues de mqtt_listener.py pour correspondre 
+    parfaitement à la structure imbriquée attendue par votre JavaScript.
+    """
+    formatted_devices = []
     with data_lock:
-        return jsonify(list(latest_data.values()))
+        for dev_eui, data in latest_data.items():
+            formatted_devices.append({
+                "device_id": data.get("device_id"),
+                "device_name": data.get("device_name"),
+                "topic": data.get("topic"),
+                "timestamp": data.get("timestamp"),
+                "fields": {
+                    "temperature": data.get("temperature"),
+                    "humidity": data.get("humidity"),
+                    "rssi": data.get("rssi"),
+                    "snr": data.get("snr"),
+                    "fCnt": data.get("fCnt")
+                }
+            })
+    return jsonify(formatted_devices)
 
 @app.route("/api/access_logs")
 @login_required
