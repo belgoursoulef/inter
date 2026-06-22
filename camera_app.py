@@ -245,17 +245,89 @@ def get_device_logs():
                  "level": r[1], "message": r[2]} for r in rows]
     return FALLBACK_DB_LOGS
 
+# --- 2FA helpers ---
+import random
+import secrets
+
+def send_otp_email(otp_code):
+    """Send the OTP code via Brevo email to all notification recipients."""
+    api_key    = os.environ.get('BREVO_API_KEY')
+    emails_raw = os.environ.get('NOTIFICATION_EMAILS') or os.environ.get('NOTIFICATION_EMAIL', '')
+    recipients = [{"email": e.strip()} for e in emails_raw.split(',') if e.strip()]
+    if not api_key or not recipients:
+        print(f"[2FA] OTP (no email configured): {otp_code}")
+        return
+    _orig = socket.getaddrinfo
+    socket.getaddrinfo = lambda h, p, f=0, t=0, pr=0, fl=0: _orig(h, p, socket.AF_INET, t, pr, fl)
+    try:
+        payload = json.dumps({
+            "sender":      {"name": "Car Horizon Security", "email": "carhorizonalert@gmail.com"},
+            "to":          recipients,
+            "subject":     "Car Horizon — Code de vérification",
+            "htmlContent": f"""
+            <div style="font-family:sans-serif;max-width:400px;margin:auto;padding:30px;background:#0d1117;color:#e8ecf4;border-radius:8px;">
+              <h2 style="color:#3d8eff;letter-spacing:2px;">CAR<span style="color:#e8ecf4">HORIZON</span></h2>
+              <p style="color:#6b7a99;font-size:14px;">Votre code de vérification à usage unique :</p>
+              <div style="font-size:42px;font-weight:700;letter-spacing:12px;color:#00d97e;padding:20px 0;text-align:center;">
+                {otp_code}
+              </div>
+              <p style="color:#6b7a99;font-size:12px;">Ce code expire dans <strong>5 minutes</strong>. Ne le partagez avec personne.</p>
+            </div>
+            """
+        }).encode()
+        req = urllib.request.Request(
+            "https://api.brevo.com/v3/smtp/email",
+            data=payload,
+            headers={"api-key": api_key, "Content-Type": "application/json"},
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            print(f"[2FA] OTP email sent: {r.read().decode()}")
+    except Exception as e:
+        print(f"[2FA] Email error: {e}")
+        print(f"[2FA] OTP fallback (check logs): {otp_code}")
+    finally:
+        socket.getaddrinfo = _orig
+
 # --- Routes ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if session.get('authenticated'): return redirect(url_for('surveillance'))
+    if session.get('authenticated'):
+        return redirect(url_for('surveillance'))
     error = None
     if request.method == 'POST':
         if request.form.get('password') == os.environ.get('APP_PASSWORD', 'pepweb-1'):
-            session['authenticated'] = True
-            return redirect(url_for('surveillance'))
+            # Password OK — generate OTP and redirect to 2FA
+            otp = str(random.randint(100000, 999999))
+            session['otp_code']    = otp
+            session['otp_expires'] = time.time() + 300  # 5 minutes
+            session.pop('authenticated', None)
+            threading.Thread(target=send_otp_email, args=(otp,), daemon=True).start()
+            return redirect(url_for('two_factor'))
         error = "Mot de passe incorrect."
     return render_template('login.html', error=error)
+
+@app.route('/2fa', methods=['GET', 'POST'])
+def two_factor():
+    if session.get('authenticated'):
+        return redirect(url_for('surveillance'))
+    # If no OTP in session, go back to login
+    if not session.get('otp_code'):
+        return redirect(url_for('login'))
+    error = None
+    if request.method == 'POST':
+        entered = request.form.get('otp', '').strip()
+        if time.time() > session.get('otp_expires', 0):
+            session.pop('otp_code', None)
+            session.pop('otp_expires', None)
+            return redirect(url_for('login'))
+        if entered == session.get('otp_code'):
+            session.pop('otp_code', None)
+            session.pop('otp_expires', None)
+            session['authenticated'] = True
+            return redirect(url_for('surveillance'))
+        error = "Code incorrect ou expiré."
+    return render_template('2fa.html', error=error)
 
 @app.route('/logout')
 def logout():
