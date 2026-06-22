@@ -1,93 +1,156 @@
-import json
-import os
-import threading
-import time
+mosquitto_sub -h 10.0.0.11 -t "#" -v
+eu868/gateway/a84041fdfe2a6efc/state/conn �a84041fdfe2a6efc
+eu868/gateway/a84041fdfe2a6efc/event/up 
+@�i�r	ؤ]U��V���ӝ
+��(*?
+a84041fdfe2a6efc���
+                  ����ز��0���������=��<A@j��o��
+application/324a4234-8af8-4c93-bf7c-407de4a9e4a5/device/a84041c681896d44/event/up {"deduplicationId":"e807d75a-9ce0-4fdd-a8a6-4855dc3528ef","time":"2026-06-22T14:56:25.539335+00:00","deviceInfo":{"tenantId":"52f14cd4-c6f1-4fbd-8f87-4025e1d49242","tenantName":"ChirpStack","applicationId":"324a4234-8af8-4c93-bf7c-407de4a9e4a5","applicationName":"LORA_pepiniereRT","deviceProfileId":"4ceb6578-9e2a-4e8d-8c01-0efb9c6bfbab","deviceProfileName":"LA66","deviceName":"Societe6","devEui":"a84041c681896d44","deviceClassEnabled":"CLASS_A","tags":{}},"devAddr":"01699ce6","adr":true,"dr":5,"fCnt":2418,"fPort":2,"confirmed":false,"data":"C/wCOw==","rxInfo":[{"gatewayId":"a84041fdfe2a6efc","uplinkId":47577,"time":"2026-06-22T14:56:25.539335+00:00","rssi":-52,"snr":11.8,"channel":5,"location":{},"context":"0PhvgQ==","metadata":{"region_common_name":"EU868","region_config_id":"eu868"},"crcStatus":"CRC_OK"}],"txInfo":{"frequency":867500000,"modulation":{"lora":{"bandwidth":125000,"spreadingFactor":7,"codeRate":"CR_4_5"}}}}
+eu868/gateway/a84041fdfe2a6efc/event/stats����(0
+                                               ���������ʻ� ��ӝz
 
-import paho.mqtt.client as mqtt
+��(
+z
 
-MQTT_BROKER   = os.environ.get("MQTT_BROKER",   "10.0.0.11")
-MQTT_PORT     = int(os.environ.get("MQTT_PORT", "1883"))
-MQTT_USERNAME = os.environ.get("MQTT_USERNAME", "")
-MQTT_PASSWORD = os.environ.get("MQTT_PASSWORD", "")
+��
+  (�a84041fdfe2a6efc
+eu868/gateway/a84041fdfe2a6efc/event/up 
+@{�K�|	 �b�e L��鄞
+��(*A
+a84041fdfe2a6efcǐ�
+                 ��������0���������=33cA@Hj�h���
+application/324a4234-8af8-4c93-bf7c-407de4a9e4a5/device/a84041c271896d4d/event/up {"deduplicationId":"a2270df7-bf2f-4aeb-b829-22f20a0ae01f","time":"2026-06-22T14:56:32.897917+00:00","deviceInfo":{"tenantId":"52f14cd4-c6f1-4fbd-8f87-4025e1d49242","tenantName":"ChirpStack","applicationId":"324a4234-8af8-4c93-bf7c-407de4a9e4a5","applicationName":"LORA_pepiniereRT","deviceProfileId":"4ceb6578-9e2a-4e8d-8c01-0efb9c6bfbab","deviceProfileName":"LA66","deviceName":"Societe3","devEui":"a84041c271896d4d","deviceClassEnabled":"CLASS_A","tags":{}},"devAddr":"004bde7b","adr":true,"dr":5,"fCnt":2428,"fPort":2,"confirmed":false,"data":"ATwB7w==","rxInfo":[{"gatewayId":"a84041fdfe2a6efc","uplinkId":51271,"time":"2026-06-22T14:56:32.897917+00:00","rssi":-77,"snr":14.2,"channel":1,"rfChain":1,"location":{},"context":"0WjE9Q==","metadata":{"region_config_id":"eu868","region_common_name":"EU868"},"crcStatus":"CRC_OK"}],"txInfo":{"frequency":868300000,"modulation":{"lora":{"bandwidth":125000,"spreadingFactor":7,"codeRate":"CR_4_5"}}}}
+eu868/gateway/a84041fdfe2a6efc/event/up 
+@�����
+�i���̩����
+��(*>
+a84041fdfe2a6efcܻ�
+                ������w0���������=8A@j�n�
+eu868/gateway/a84041fdfe2a6efc/event/up 
+@z[.�E-�9�n��鄞
+��(*@
+a84041fdfe2a6efc��
+                 ��������0���������=`A@Hj�q��
+application/324a4234-8af8-4c93-bf7c-407de4a9e4a5/device/a840418b21896d45/event/up {"deduplicationId":"2a78ec9e-be2a-48a3-a849-fbdfbb477258","time":"2026-06-22T14:56:33.250459+00:00","deviceInfo":{"tenantId":"52f14cd4-c6f1-4fbd-8f87-4025e1d49242","tenantName":"ChirpStack","applicationId":"324a4234-8af8-4c93-bf7c-407de4a9e4a5","applicationName":"LORA_pepiniereRT","deviceProfileId":"4ceb6578-9e2a-4e8d-8c01-0efb9c6bfbab","deviceProfileName":"LA66","deviceName":"Societe1","devEui":"a840418b21896d45","deviceClassEnabled":"CLASS_A","tags":{}},"devAddr":"00f7d3f4","adr":true,"dr":5,"fCnt":2762,"fPort":2,"confirmed":false,"data":"AT8B8w==","rxInfo":[{"gatewayId":"a84041fdfe2a6efc","uplinkId":40412,"time":"2026-06-22T14:56:33.250459+00:00","rssi":-101,"snr":11.5,"channel":6,"location":{},"context":"0W4d6w==","metadata":{"region_config_id":"eu868","region_common_name":"EU868"},"crcStatus":"CRC_OK"}],"txInfo":{"frequency":867700000,"modulation":{"lora":{"bandwidth":125000,"spreadingFactor":7,"codeRate":"CR_4_5"}}}}
+application/324a4234-8af8-4c93-bf7c-407de4a9e4a5/device/a840416221896d3f/event/up {"deduplicationId":"e37adcb5-c8a3-416e-804b-de2c2ea90e6b","time":"2026-06-22T14:56:33.495470+00:00","deviceInfo":{"tenantId":"52f14cd4-c6f1-4fbd-8f87-4025e1d49242","tenantName":"ChirpStack","applicationId":"324a4234-8af8-4c93-bf7c-407de4a9e4a5","applicationName":"LORA_pepiniereRT","deviceProfileId":"4ceb6578-9e2a-4e8d-8c01-0efb9c6bfbab","deviceProfileName":"LA66","deviceName":"Societe5","devEui":"a840416221896d3f","deviceClassEnabled":"CLASS_A","tags":{}},"devAddr":"002e5b7a","adr":true,"dr":5,"fCnt":279,"fPort":2,"confirmed":false,"data":"DAYWqA==","rxInfo":[{"gatewayId":"a84041fdfe2a6efc","uplinkId":1959,"time":"2026-06-22T14:56:33.495470+00:00","rssi":-64,"snr":14.0,"channel":1,"rfChain":1,"location":{},"context":"0XHy6g==","metadata":{"region_config_id":"eu868","region_common_name":"EU868"},"crcStatus":"CRC_OK"}],"txInfo":{"frequency":868300000,"modulation":{"lora":{"bandwidth":125000,"spreadingFactor":7,"codeRate":"CR_4_5"}}}}
+eu868/gateway/a84041fdfe2a6efc/event/up 
+@�i�s	
+V���ʻ�
+��(*>
+a84041fdfe2a6efc�)�
+                  ����𧎄0���������=��\A@jё4Ā
+application/324a4234-8af8-4c93-bf7c-407de4a9e4a5/device/a84041c681896d44/event/up {"deduplicationId":"2115204d-aa8b-483d-a978-ba0433b09845","time":"2026-06-22T14:56:35.545494+00:00","deviceInfo":{"tenantId":"52f14cd4-c6f1-4fbd-8f87-4025e1d49242","tenantName":"ChirpStack","applicationId":"324a4234-8af8-4c93-bf7c-407de4a9e4a5","applicationName":"LORA_pepiniereRT","deviceProfileId":"4ceb6578-9e2a-4e8d-8c01-0efb9c6bfbab","deviceProfileName":"LA66","deviceName":"Societe6","devEui":"a84041c681896d44","deviceClassEnabled":"CLASS_A","tags":{}},"devAddr":"01699ce6","adr":true,"dr":5,"fCnt":2419,"fPort":2,"confirmed":false,"data":"C/wCPg==","rxInfo":[{"gatewayId":"a84041fdfe2a6efc","uplinkId":5307,"time":"2026-06-22T14:56:35.545494+00:00","rssi":-54,"snr":13.8,"channel":3,"location":{},"context":"0ZE0xA==","metadata":{"region_config_id":"eu868","region_common_name":"EU868"},"crcStatus":"CRC_OK"}],"txInfo":{"frequency":867100000,"modulation":{"lora":{"bandwidth":125000,"spreadingFactor":7,"codeRate":"CR_4_5"}}}}
+eu868/gateway/a84041fdfe2a6efc/event/up 
+@�T��6�I��������
+��
+  (*>
+a84041fdfe2a6efc���
+                  �������e0���������= AHjѹ���
+application/324a4234-8af8-4c93-bf7c-407de4a9e4a5/device/a8404137b1896d4c/event/up {"deduplicationId":"0f2b0f99-1094-481d-baf9-992a5c3e419f","time":"2026-06-22T14:56:38.213548+00:00","deviceInfo":{"tenantId":"52f14cd4-c6f1-4fbd-8f87-4025e1d49242","tenantName":"ChirpStack","applicationId":"324a4234-8af8-4c93-bf7c-407de4a9e4a5","applicationName":"LORA_pepiniereRT","deviceProfileId":"4ceb6578-9e2a-4e8d-8c01-0efb9c6bfbab","deviceProfileName":"LA66","deviceName":"Societe7","devEui":"a8404137b1896d4c","deviceClassEnabled":"CLASS_A","tags":{}},"devAddr":"019b54e2","adr":true,"dr":0,"fCnt":1334,"fPort":2,"confirmed":false,"data":"AS4CJw==","rxInfo":[{"gatewayId":"a84041fdfe2a6efc","uplinkId":47557,"time":"2026-06-22T14:56:38.213548+00:00","rssi":-39,"snr":10.0,"rfChain":1,"location":{},"context":"0bmp+w==","metadata":{"region_common_name":"EU868","region_config_id":"eu868"},"crcStatus":"CRC_OK"}],"txInfo":{"frequency":868100000,"modulation":{"lora":{"bandwidth":125000,"spreadingFactor":12,"codeRate":"CR_4_5"}}}}
+eu868/gateway/a84041fdfe2a6efc/event/up 
+@{�K�}	���`5P���
+��(*>
+a84041fdfe2a6efc�?�
+                  �������0���������=XA@j�j��
+application/324a4234-8af8-4c93-bf7c-407de4a9e4a5/device/a84041c271896d4d/event/up {"deduplicationId":"6f4a6e81-97a4-4fbb-8c7c-ab0f5dc71fcb","time":"2026-06-22T14:56:42.903361+00:00","deviceInfo":{"tenantId":"52f14cd4-c6f1-4fbd-8f87-4025e1d49242","tenantName":"ChirpStack","applicationId":"324a4234-8af8-4c93-bf7c-407de4a9e4a5","applicationName":"LORA_pepiniereRT","deviceProfileId":"4ceb6578-9e2a-4e8d-8c01-0efb9c6bfbab","deviceProfileName":"LA66","deviceName":"Societe3","devEui":"a84041c271896d4d","deviceClassEnabled":"CLASS_A","tags":{}},"devAddr":"004bde7b","adr":true,"dr":5,"fCnt":2429,"fPort":2,"confirmed":false,"data":"ATwB7w==","rxInfo":[{"gatewayId":"a84041fdfe2a6efc","uplinkId":8087,"time":"2026-06-22T14:56:42.903361+00:00","rssi":-91,"snr":13.5,"channel":7,"location":{},"context":"0gFqwQ==","metadata":{"region_config_id":"eu868","region_common_name":"EU868"},"crcStatus":"CRC_OK"}],"txInfo":{"frequency":867900000,"modulation":{"lora":{"bandwidth":125000,"spreadingFactor":7,"codeRate":"CR_4_5"}}}}
+eu868/gateway/a84041fdfe2a6efc/event/up 
+@�����
+����������
+��(*>
+a84041fdfe2a6efcǽ�
+                 �����ʾt0���������=���@Hj��Ԁ
+application/324a4234-8af8-4c93-bf7c-407de4a9e4a5/device/a840418b21896d45/event/up {"deduplicationId":"86d31de3-d8d0-45ef-8e50-4e6f98c18164","time":"2026-06-22T14:56:43.244295+00:00","deviceInfo":{"tenantId":"52f14cd4-c6f1-4fbd-8f87-4025e1d49242","tenantName":"ChirpStack","applicationId":"324a4234-8af8-4c93-bf7c-407de4a9e4a5","applicationName":"LORA_pepiniereRT","deviceProfileId":"4ceb6578-9e2a-4e8d-8c01-0efb9c6bfbab","deviceProfileName":"LA66","deviceName":"Societe1","devEui":"a840418b21896d45","deviceClassEnabled":"CLASS_A","tags":{}},"devAddr":"00f7d3f4","adr":true,"dr":5,"fCnt":2763,"fPort":2,"confirmed":false,"data":"AT8B9Q==","rxInfo":[{"gatewayId":"a84041fdfe2a6efc","uplinkId":57031,"time":"2026-06-22T14:56:43.244295+00:00","rssi":-100,"snr":5.8,"rfChain":1,"location":{},"context":"0gaT1A==","metadata":{"region_common_name":"EU868","region_config_id":"eu868"},"crcStatus":"CRC_OK"}],"txInfo":{"frequency":868100000,"modulation":{"lora":{"bandwidth":125000,"spreadingFactor":7,"codeRate":"CR_4_5"}}}}
+eu868/gateway/a84041fdfe2a6efc/event/up 
+@�i�t	����g\��ǝ
+��(*?
+a84041fdfe2a6efc���
+                  �������0���������=��\A@j�)��
+application/324a4234-8af8-4c93-bf7c-407de4a9e4a5/device/a84041c681896d44/event/up {"deduplicationId":"0e4b306f-5769-47b6-985f-52333d1eef31","time":"2026-06-22T14:56:45.559756+00:00","deviceInfo":{"tenantId":"52f14cd4-c6f1-4fbd-8f87-4025e1d49242","tenantName":"ChirpStack","applicationId":"324a4234-8af8-4c93-bf7c-407de4a9e4a5","applicationName":"LORA_pepiniereRT","deviceProfileId":"4ceb6578-9e2a-4e8d-8c01-0efb9c6bfbab","deviceProfileName":"LA66","deviceName":"Societe6","devEui":"a84041c681896d44","deviceClassEnabled":"CLASS_A","tags":{}},"devAddr":"01699ce6","adr":true,"dr":5,"fCnt":2420,"fPort":2,"confirmed":false,"data":"C/oCPQ==","rxInfo":[{"gatewayId":"a84041fdfe2a6efc","uplinkId":57118,"time":"2026-06-22T14:56:45.559756+00:00","rssi":-52,"snr":13.8,"channel":4,"location":{},"context":"0in57w==","metadata":{"region_config_id":"eu868","region_common_name":"EU868"},"crcStatus":"CRC_OK"}],"txInfo":{"frequency":867300000,"modulation":{"lora":{"bandwidth":125000,"spreadingFactor":7,"codeRate":"CR_4_5"}}}}
+eu868/gateway/a84041fdfe2a6efc/event/up 
+@z[.����i���l����
+��(*A
+a84041fdfe2a6efc���
+                  ��������0���������=8A@Hj�;l'�
+application/324a4234-8af8-4c93-bf7c-407de4a9e4a5/device/a840416221896d3f/event/up {"deduplicationId":"6ae7a73e-f0ec-4c2a-9ed5-08f50ca1b320","time":"2026-06-22T14:56:46.706053+00:00","deviceInfo":{"tenantId":"52f14cd4-c6f1-4fbd-8f87-4025e1d49242","tenantName":"ChirpStack","applicationId":"324a4234-8af8-4c93-bf7c-407de4a9e4a5","applicationName":"LORA_pepiniereRT","deviceProfileId":"4ceb6578-9e2a-4e8d-8c01-0efb9c6bfbab","deviceProfileName":"LA66","deviceName":"Societe5","devEui":"a840416221896d3f","deviceClassEnabled":"CLASS_A","tags":{}},"devAddr":"002e5b7a","adr":true,"dr":5,"fCnt":280,"fPort":2,"confirmed":false,"data":"DAYWmg==","rxInfo":[{"gatewayId":"a84041fdfe2a6efc","uplinkId":63458,"time":"2026-06-22T14:56:46.706053+00:00","rssi":-63,"snr":11.5,"channel":2,"rfChain":1,"location":{},"context":"0jtsJw==","metadata":{"region_config_id":"eu868","region_common_name":"EU868"},"crcStatus":"CRC_OK"}],"txInfo":{"frequency":868500000,"modulation":{"lora":{"bandwidth":125000,"spreadingFactor":7,"codeRate":"CR_4_5"}}}}
+eu868/gateway/a84041fdfe2a6efc/event/up 
+@�T��7@A��P�������
+��
+  (*?
+a84041fdfe2a6efc���
+                  ������ܬ0���������=��AHjҠ��
+application/324a4234-8af8-4c93-bf7c-407de4a9e4a5/device/a8404137b1896d4c/event/up {"deduplicationId":"60e4a9f9-ebd6-46ab-a01e-9cffd1a537a7","time":"2026-06-22T14:56:53.362229+00:00","deviceInfo":{"tenantId":"52f14cd4-c6f1-4fbd-8f87-4025e1d49242","tenantName":"ChirpStack","applicationId":"324a4234-8af8-4c93-bf7c-407de4a9e4a5","applicationName":"LORA_pepiniereRT","deviceProfileId":"4ceb6578-9e2a-4e8d-8c01-0efb9c6bfbab","deviceProfileName":"LA66","deviceName":"Societe7","devEui":"a8404137b1896d4c","deviceClassEnabled":"CLASS_A","tags":{}},"devAddr":"019b54e2","adr":true,"dr":0,"fCnt":1335,"fPort":2,"confirmed":false,"data":"AS4CMA==","rxInfo":[{"gatewayId":"a84041fdfe2a6efc","uplinkId":55966,"time":"2026-06-22T14:56:53.362229+00:00","rssi":-33,"snr":9.8,"rfChain":1,"location":{},"context":"0qDK4w==","metadata":{"region_config_id":"eu868","region_common_name":"EU868"},"crcStatus":"CRC_OK"}],"txInfo":{"frequency":868100000,"modulation":{"lora":{"bandwidth":125000,"spreadingFactor":12,"codeRate":"CR_4_5"}}}}
+eu868/gateway/a84041fdfe2a6efc/event/up 
+@�i�u	��q���鄞
+��(*@
+a84041fdfe2a6efc�<�
+                  ������ԏ0���������=��\A@Hj�»0�
+eu868/gateway/a84041fdfe2a6efc/event/up 
+@����ۨ���D��ӝ
+��(*?
+a84041fdfe2a6efc҃�
+                ��������0���������=@A@j��<�
+application/324a4234-8af8-4c93-bf7c-407de4a9e4a5/device/a84041c681896d44/event/up {"deduplicationId":"e53d3b19-41ae-41db-ad50-79779d615bb4","time":"2026-06-22T14:56:55.569716+00:00","deviceInfo":{"tenantId":"52f14cd4-c6f1-4fbd-8f87-4025e1d49242","tenantName":"ChirpStack","applicationId":"324a4234-8af8-4c93-bf7c-407de4a9e4a5","applicationName":"LORA_pepiniereRT","deviceProfileId":"4ceb6578-9e2a-4e8d-8c01-0efb9c6bfbab","deviceProfileName":"LA66","deviceName":"Societe6","devEui":"a84041c681896d44","deviceClassEnabled":"CLASS_A","tags":{}},"devAddr":"01699ce6","adr":true,"dr":5,"fCnt":2421,"fPort":2,"confirmed":false,"data":"C/oCPw==","rxInfo":[{"gatewayId":"a84041fdfe2a6efc","uplinkId":7737,"time":"2026-06-22T14:56:55.569716+00:00","rssi":-35,"snr":13.8,"channel":1,"rfChain":1,"location":{},"context":"0sK7MA==","metadata":{"region_config_id":"eu868","region_common_name":"EU868"},"crcStatus":"CRC_OK"}],"txInfo":{"frequency":868300000,"modulation":{"lora":{"bandwidth":125000,"spreadingFactor":7,"codeRate":"CR_4_5"}}}}
+application/324a4234-8af8-4c93-bf7c-407de4a9e4a5/device/a840412051896d52/event/up {"deduplicationId":"d6a0a041-1021-4dd8-b30a-6f5fdf860da3","time":"2026-06-22T14:56:55.910548+00:00","deviceInfo":{"tenantId":"52f14cd4-c6f1-4fbd-8f87-4025e1d49242","tenantName":"ChirpStack","applicationId":"324a4234-8af8-4c93-bf7c-407de4a9e4a5","applicationName":"LORA_pepiniereRT","deviceProfileId":"4ceb6578-9e2a-4e8d-8c01-0efb9c6bfbab","deviceProfileName":"LA66","deviceName":"Societe2","devEui":"a840412051896d52","deviceClassEnabled":"CLASS_A","tags":{}},"devAddr":"018ee685","adr":true,"dr":5,"fCnt":244,"fPort":2,"confirmed":false,"data":"DGQUcw==","rxInfo":[{"gatewayId":"a84041fdfe2a6efc","uplinkId":33234,"time":"2026-06-22T14:56:55.910548+00:00","rssi":-89,"snr":12.0,"channel":5,"location":{},"context":"0sgAPA==","metadata":{"region_config_id":"eu868","region_common_name":"EU868"},"crcStatus":"CRC_OK"}],"txInfo":{"frequency":867500000,"modulation":{"lora":{"bandwidth":125000,"spreadingFactor":7,"codeRate":"CR_4_5"}}}}
+0u868/gateway/a84041fdfe2a6efc/event/stats����(
+� ����ʻ�����������ӝz
 
-# Remplace l'EUI par celui de societe2
-MQTT_TOPIC    = os.environ.get("MQTT_TOPIC", "application/+/device/A840412051896D52/event/up")
+��(
+z
 
-# Nom ou EUI de societe2 — filtre en double sécurité
-SOCIETE2_EUI  = os.environ.get("SOCIETE2_EUI", "A840412051896D52").lower()
-
-latest_data = {}
-data_lock   = threading.Lock()
-
-
-def extract_temperature(payload):
-    for src in (payload.get("object", {}), payload.get("data", {}), payload):
-        if not isinstance(src, dict):
-            continue
-        for key in ("temperature", "temp", "Temperature"):
-            if key in src:
-                return src[key]
-    return None
-
-
-def extract_device_id(payload):
-    info = payload.get("deviceInfo", {})
-    return (info.get("devEui") or payload.get("devEUI") or "unknown_device").lower()
-
-
-def on_connect(client, userdata, flags, reason_code, properties=None):
-    print("Connecté MQTT, code:", reason_code)
-    client.subscribe(MQTT_TOPIC)
-    print("Abonné au topic:", MQTT_TOPIC)
-
-
-def on_disconnect(client, userdata, reason_code, properties=None):
-    print("Déconnecté MQTT, reconnexion automatique en cours...")
-
-
-def on_message(client, userdata, msg):
-    try:
-        payload = json.loads(msg.payload.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
-        print("Message ignoré (JSON invalide) sur", msg.topic)
-        return
-
-    device_id = extract_device_id(payload)
-
-    # Filtre : on ignore tout ce qui ne vient pas de societe2
-    if device_id != SOCIETE2_EUI:
-        return
-
-    temp = extract_temperature(payload)
-    if temp is None:
-        print(f"Aucune température trouvée pour {device_id}. Payload: {payload}")
-        return
-
-    record = {
-        "device_id":   device_id,
-        "temperature": temp,
-        "timestamp":   payload.get("time") or payload.get("received_at"),
-        "topic":       msg.topic,
-    }
-    print("Reçu:", record)
-
-    with data_lock:
-        latest_data[device_id] = record
-
-
-def start_mqtt_listener():
-    while True:
-        try:
-            client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
-            if MQTT_USERNAME:
-                client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
-
-            client.on_connect    = on_connect
-            client.on_disconnect = on_disconnect
-            client.on_message    = on_message
-
-            client.connect(MQTT_BROKER, MQTT_PORT, keepalive=60)
-            client.loop_forever()
-        except Exception as e:
-            print(f"MQTT: erreur ({e}), nouvelle tentative dans 10s...")
-            time.sleep(10)
+��
+  (�a84041fdfe2a6efc
+eu868/gateway/a84041fdfe2a6efc/event/up 
+@z[.�0��芁%���
+��(*?
+a84041fdfe2a6efc���
+                  �������0���������=��\A@j���
+application/324a4234-8af8-4c93-bf7c-407de4a9e4a5/device/a840416221896d3f/event/up {"deduplicationId":"452251e6-f68e-480a-8956-6570830247d8","time":"2026-06-22T14:56:59.907630+00:00","deviceInfo":{"tenantId":"52f14cd4-c6f1-4fbd-8f87-4025e1d49242","tenantName":"ChirpStack","applicationId":"324a4234-8af8-4c93-bf7c-407de4a9e4a5","applicationName":"LORA_pepiniereRT","deviceProfileId":"4ceb6578-9e2a-4e8d-8c01-0efb9c6bfbab","deviceProfileName":"LA66","deviceName":"Societe5","devEui":"a840416221896d3f","deviceClassEnabled":"CLASS_A","tags":{}},"devAddr":"002e5b7a","adr":true,"dr":5,"fCnt":281,"fPort":2,"confirmed":false,"data":"DAkWnw==","rxInfo":[{"gatewayId":"a84041fdfe2a6efc","uplinkId":60834,"time":"2026-06-22T14:56:59.907630+00:00","rssi":-79,"snr":13.8,"channel":7,"location":{},"context":"0wTl7A==","metadata":{"region_config_id":"eu868","region_common_name":"EU868"},"crcStatus":"CRC_OK"}],"txInfo":{"frequency":867900000,"modulation":{"lora":{"bandwidth":125000,"spreadingFactor":7,"codeRate":"CR_4_5"}}}}
+eu868/gateway/a84041fdfe2a6efc/event/up 
+@{�K�	��~����ǝ
+��(*>
+a84041fdfe2a6efc��
+                 �������0���������=33SA@j�2�Q�
+eu868/gateway/a84041fdfe2a6efc/event/up 
+@�����
+s�̎/&�����
+��(*=
+a84041fdfe2a6efc�|�
+                  ����Ё�l0���������=PA@j�7���
+application/324a4234-8af8-4c93-bf7c-407de4a9e4a5/device/a84041c271896d4d/event/up {"deduplicationId":"8c525a88-db0a-4423-a0ae-081713b37408","time":"2026-06-22T14:57:02.905755+00:00","deviceInfo":{"tenantId":"52f14cd4-c6f1-4fbd-8f87-4025e1d49242","tenantName":"ChirpStack","applicationId":"324a4234-8af8-4c93-bf7c-407de4a9e4a5","applicationName":"LORA_pepiniereRT","deviceProfileId":"4ceb6578-9e2a-4e8d-8c01-0efb9c6bfbab","deviceProfileName":"LA66","deviceName":"Societe3","devEui":"a84041c271896d4d","deviceClassEnabled":"CLASS_A","tags":{}},"devAddr":"004bde7b","adr":true,"dr":5,"fCnt":2431,"fPort":2,"confirmed":false,"data":"ATwB8A==","rxInfo":[{"gatewayId":"a84041fdfe2a6efc","uplinkId":2982,"time":"2026-06-22T14:57:02.905755+00:00","rssi":-95,"snr":13.2,"channel":4,"location":{},"context":"0zK+UQ==","metadata":{"region_common_name":"EU868","region_config_id":"eu868"},"crcStatus":"CRC_OK"}],"txInfo":{"frequency":867300000,"modulation":{"lora":{"bandwidth":125000,"spreadingFactor":7,"codeRate":"CR_4_5"}}}}
+eu868/gateway/a84041fdfe2a6efc/command/down ����"O$��*_
+`{�K��W��ǁu$(��ǝ0B
+                 }�4/5 `r
+��2�Q���ǝ�
+          �
+�� (2
+:�2�Q*_
+`{�K��W��ǁu$(��Ϟ0
+                }
+                 �4/5 `r
+��2�Q���Ϟ�
+          �
+��
+   (2
+:�2�Q�@A��*n�:a84041fdfe2a6efc
+eu868/gateway/a84041fdfe2a6efc/event/ack ����*2a84041fdfe2a6efc
+application/324a4234-8af8-4c93-bf7c-407de4a9e4a5/device/a840418b21896d45/event/up {"deduplicationId":"a83c0848-0ca0-4866-a769-944ab9a09af5","time":"2026-06-22T14:57:03.226722+00:00","deviceInfo":{"tenantId":"52f14cd4-c6f1-4fbd-8f87-4025e1d49242","tenantName":"ChirpStack","applicationId":"324a4234-8af8-4c93-bf7c-407de4a9e4a5","applicationName":"LORA_pepiniereRT","deviceProfileId":"4ceb6578-9e2a-4e8d-8c01-0efb9c6bfbab","deviceProfileName":"LA66","deviceName":"Societe1","devEui":"a840418b21896d45","deviceClassEnabled":"CLASS_A","tags":{}},"devAddr":"00f7d3f4","adr":true,"dr":5,"fCnt":2765,"fPort":2,"confirmed":false,"data":"AT8B9g==","rxInfo":[{"gatewayId":"a84041fdfe2a6efc","uplinkId":15979,"time":"2026-06-22T14:57:03.226722+00:00","rssi":-94,"snr":13.0,"channel":6,"location":{},"context":"0zeDtQ==","metadata":{"region_config_id":"eu868","region_common_name":"EU868"},"crcStatus":"CRC_OK"}],"txInfo":{"frequency":867700000,"modulation":{"lora":{"bandwidth":125000,"spreadingFactor":7,"codeRate":"CR_4_5"}}}}
+eu868/gateway/a84041fdfe2a6efc/event/up 
+@�i�v	��R�Bx�鄞
+��(*@
+a84041fdfe2a6efc�d�
+                  ������Ȕ0���������=33SA@Hj�[�}�
+application/324a4234-8af8-4c93-bf7c-407de4a9e4a5/device/a84041c681896d44/event/up {"deduplicationId":"ce629259-3ba9-4949-bd53-acf0ed484842","time":"2026-06-22T14:57:05.580008+00:00","deviceInfo":{"tenantId":"52f14cd4-c6f1-4fbd-8f87-4025e1d49242","tenantName":"ChirpStack","applicationId":"324a4234-8af8-4c93-bf7c-407de4a9e4a5","applicationName":"LORA_pepiniereRT","deviceProfileId":"4ceb6578-9e2a-4e8d-8c01-0efb9c6bfbab","deviceProfileName":"LA66","deviceName":"Societe6","devEui":"a84041c681896d44","deviceClassEnabled":"CLASS_A","tags":{}},"devAddr":"01699ce6","adr":true,"dr":5,"fCnt":2422,"fPort":2,"confirmed":false,"data":"C/wCPw==","rxInfo":[{"gatewayId":"a84041fdfe2a6efc","uplinkId":12842,"time":"2026-06-22T14:57:05.580008+00:00","rssi":-35,"snr":13.2,"channel":1,"rfChain":1,"location":{},"context":"01uAfQ==","metadata":{"region_config_id":"eu868","region_common_name":"EU868"},"crcStatus":"CRC_OK"}],"txInfo":{"frequency":868300000,"modulation":{"lora":{"bandwidth":125000,"spreadingFactor":7,"codeRate":"CR_4_5"}}}}
+eu868/gateway/a84041fdfe2a6efc/event/up 
+@�T��8�h���z����
+��
+  (*?
+a84041fdfe2a6efc���
+                  Ě������0���������=33#AHjӇ缀
+eu868/gateway/a84041fdfe2a6efc/event/up 
+@�T��8�h���z�ʻ�
+��
+  (*?
+a84041fdfe2a6efc���
+                  Ě������0���������=h�@jӇ缀
+application/324a4234-8af8-4c93-bf7c-407de4a9e4a5/device/a8404137b1896d4c/event/log {"time":"2026-06-22T14:57:08.510100+00:00","deviceInfo":{"tenantId":"52f14cd4-c6f1-4fbd-8f87-4025e1d49242","tenantName":"ChirpStack","applicationId":"324a4234-8af8-4c93-bf7c-407de4a9e4a5","applicationName":"LORA_pepiniereRT","deviceProfileId":"4ceb6578-9e2a-4e8d-8c01-0efb9c6bfbab","deviceProfileName":"LA66","deviceName":"Societe7","devEui":"a8404137b1896d4c","deviceClassEnabled":"CLASS_A","tags":{}},"level":"WARNING","code":"UPLINK_F_CNT_RETRANSMISSION","description":"Uplink was flagged as re-transmission / frame-counter did not increment","context":{"deduplication_id":"8fc3f9e1-032a-484f-a8df-88086eba74be"}}
+application/324a4234-8af8-4c93-bf7c-407de4a9e4a5/device/a8404137b1896d4c/event/up {"deduplicationId":"30383da0-2a7c-4b65-ac4a-aa8e46b549da","time":"2026-06-22T14:57:08.510282+00:00","deviceInfo":{"tenantId":"52f14cd4-c6f1-4fbd-8f87-4025e1d49242","tenantName":"ChirpStack","applicationId":"324a4234-8af8-4c93-bf7c-407de4a9e4a5","applicationName":"LORA_pepiniereRT","deviceProfileId":"4ceb6578-9e2a-4e8d-8c01-0efb9c6bfbab","deviceProfileName":"LA66","deviceName":"Societe7","devEui":"a8404137b1896d4c","deviceClassEnabled":"CLASS_A","tags":{}},"devAddr":"019b54e2","adr":true,"dr":0,"fCnt":1336,"fPort":2,"confirmed":false,"data":"AS8CMA==","rxInfo":[{"gatewayId":"a84041fdfe2a6efc","uplinkId":65041,"time":"2026-06-22T14:57:08.510282+00:00","rssi":-39,"snr":10.2,"rfChain":1,"location":{},"context":"04fnvA==","metadata":{"region_common_name":"EU868","region_config_id":"eu868"},"crcStatus":"CRC_OK"}],"txInfo":{"frequency":868100000,"modulation":{"lora":{"bandwidth":125000,"spreadingFactor":12,"codeRate":"CR_4_5"}}}}
