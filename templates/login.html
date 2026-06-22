@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Car Horizon — Authentification</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="login-container">
+
+<div class="login-card">
+  <div class="login-logo">
+    <span class="car">CAR</span><span class="horizon">HORIZON</span>
+  </div>
+  
+  <p style="color: var(--muted); text-align: center; font-size: 13px; margin-bottom: 24px;">
+    Veuillez entrer le mot de passe pour accéder au tableau de bord de surveillance.
+  </p>
+  
+  {% if error %}
+    <div class="login-error">{{ error }}</div>
+  {% endif %}
+  
+  <form action="{{ url_for('login') }}" method="POST">
+    <div class="form-group">
+      <label class="form-label" for="password">Mot de Passe</label>
+      <input type="password" id="password" name="password" placeholder="••••••••" required class="form-control" autofocus autocomplete="current-password">
+    </div>
+    
+    <button type="submit" class="btn" style="width: 100%; margin-top: 15px; padding: 12px 14px;">Se Connecter</button>
+  </form>
+</div>
+
+</body>
+</html>

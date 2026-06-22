@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Car Horizon — Surveillance Interne</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+
+  <!-- NAV / HEADER -->
+  <nav>
+    <div class="nav-links"></div>
+    <a href="{{ url_for('surveillance') }}" class="logo">
+      <span class="car">CAR</span><span class="horizon">HORIZON</span>
+    </a>
+    <div class="nav-right">
+      <a href="{{ url_for('logout') }}"
+        style="color: var(--muted); text-decoration: none; font-size: 13px; margin-right: 15px;">Déconnexion</a>
+    </div>
+  </nav>
+
+  <!-- PAGE HEADER -->
+  <div class="page-header">
+    <div>
+      <div class="breadcrumb">Interne / <span>Tableau de Bord</span></div>
+      <h1>Système de Surveillance & Accès</h1>
+    </div>
+  </div>
+
+  <main>
+    <!-- KPI ROW -->
+    <div class="kpi-row">
+      <div class="kpi green">
+        <div class="kpi-label">Accès autorisés</div>
+        <div class="kpi-value">{{ kpis.authorized }}</div>
+        <div class="kpi-sub">Aujourd'hui — {{ kpis.active_employees }} employés actifs</div>
+      </div>
+      <div class="kpi red">
+        <div class="kpi-label">Accès refusés</div>
+        <div class="kpi-value">{{ kpis.denied }}</div>
+        <div class="kpi-sub">Badges inconnus ce jour</div>
+      </div>
+      <div class="kpi blue">
+        <div class="kpi-label">Caméras actives</div>
+        <div class="kpi-value">2/2</div>
+        <div class="kpi-sub">Flux RTSP en ligne</div>
+      </div>
+      <div class="kpi amber">
+        <div class="kpi-label">Alertes intrusion</div>
+        <div class="kpi-value">{{ kpis.intrusions }}</div>
+        <div class="kpi-sub">Depuis 20h00 ce soir</div>
+      </div>
+    </div>
+
+    <div class="grid-3-1">
+
+      <!-- LEFT WIDE COLUMN -->
+      <div style="display:flex; flex-direction:column; gap:18px;">
+
+        <!-- CAMERAS -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Flux Vidéo en Direct</span>
+            <span class="card-badge badge-red">2 CAMÉRAS EN LIGNE</span>
+          </div>
+          <div class="card-body">
+            <div class="cameras">
+
+              <!-- CAM 1 -->
+              <div class="cam-feed" style="position: relative;">
+                <img id="feedimg1" src="{{ url_for('video_feed_1') }}"
+                  style="width:100%;height:100%;display:none;object-fit:cover;"
+                  onload="this.style.display='block'; document.getElementById('cam1').style.display='none';">
+                <canvas id="cam1" width="640" height="360" style="width:100%;height:100%;display:block;"></canvas>
+                <div class="cam-overlay">
+                  <div class="cam-top">
+                    <span class="cam-label">CAM 01 — ENTRÉE</span>
+                  </div>
+                </div>
+
+                <!-- Live Access Alert Overlay Box -->
+                <div id="access-alert" class="access-alert-box" style="display: none;">
+                  <div class="alert-content">
+                    <div class="alert-title" id="alert-status">ACCÈS AUTORISÉ</div>
+                    <div class="alert-subtitle" id="alert-name">Aicha Soulef BELGOUR</div>
+                    <div class="alert-badge" id="alert-badge-id">EMP001</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- CAM 2 -->
+              <div class="cam-feed" style="border-right:none; position: relative;">
+                <img id="feedimg2" src="{{ url_for('video_feed_2') }}"
+                  style="width:100%;height:100%;display:none;object-fit:cover;"
+                  onload="this.style.display='block'; document.getElementById('cam2').style.display='none';">
+                <canvas id="cam2" width="640" height="360" style="width:100%;height:100%;display:block;"></canvas>
+                <div class="cam-overlay">
+                  <div class="cam-top">
+                    <span class="cam-label">CAM 02 — GARAGE</span>
+                  </div>
+                  <div class="cam-bottom">
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- ACCESS LOG -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Historique des Accès</span>
+            <span class="card-badge badge-blue">TEMPS RÉEL</span>
+          </div>
+          <div class="card-body">
+            <table class="log-table">
+              <thead>
+                <tr>
+                  <th>Horodatage</th>
+                  <th>Badge ID</th>
+                  <th>Employé</th>
+                  <th>Service</th>
+                  <th>Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for log in access_logs[:8] %}
+                <tr>
+                  <td class="mono-time">{{ log.time }}</td>
+                  <td><span class="badge-id" {% if log.status=='REFUSE' or log.status=='REFUSÉ'
+                      %}style="color:var(--red);background:rgba(245,61,61,.08);" {% endif %}>{{ log.badge }}</span></td>
+                  <td {% if log.status=='REFUSE' or log.status=='REFUSÉ' %}style="color:var(--muted);" {% endif %}>{{
+                    log.employee }}</td>
+                  <td>
+                    <span
+                      class="service-badge {% if log.service == 'IT' %}svc-it{% elif log.service == 'Production' %}svc-prod{% elif log.service == 'Administratif' %}svc-adm{% else %}svc-unkn{% endif %}">
+                      {{ log.service }}
+                    </span>
+                  </td>
+                  <td>
+                    {% if log.status == 'AUTORISE' or log.status == 'AUTORISÉ' %}
+                    <span class="status-granted">AUTORISÉ</span>
+                    {% else %}
+                    <span class="status-denied">REFUSÉ</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% else %}
+                <tr>
+                  <td colspan="5" style="text-align: center; color: var(--muted); padding: 20px;">Aucun scan de badge
+                    aujourd'hui.</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- DOWNLOADS CARD -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Télécharger les Données Brutes (CSV)</span>
+            <span class="card-badge badge-blue">EXTRACTION</span>
+          </div>
+          <div class="card-body" style="padding: 20px;">
+            <p style="color: var(--muted); font-size: 13.5px; margin-bottom: 20px; line-height: 1.5;">
+              Exportez les fichiers journaux complets générés par le système de surveillance pour analyse externe ou
+              archivage.
+            </p>
+
+            <div style="display: flex; gap: 12px;">
+              <div
+                style="display: flex; flex: 1; justify-content: space-between; align-items: center; padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 4px;">
+                <div>
+                  <span style="font-weight: 600; display: block; font-size: 13px;">Historique des Accès</span>
+                  <small style="color: var(--muted); font-size: 11px;">Fichier :
+                    <code>historique_acces.csv</code></small>
+                </div>
+                <a href="/download/acces" class="btn btn-secondary"
+                  style="font-size: 11px; padding: 6px 12px;">Télécharger CSV</a>
+              </div>
+
+              <div
+                style="display: flex; flex: 1; justify-content: space-between; align-items: center; padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 4px;">
+                <div>
+                  <span style="font-weight: 600; display: block; font-size: 13px;">Historique des Intrusions</span>
+                  <small style="color: var(--muted); font-size: 11px;">Fichier :
+                    <code>historique_intrusion.csv</code></small>
+                </div>
+                <a href="/download/intrusion" class="btn btn-secondary"
+                  style="font-size: 11px; padding: 6px 12px;">Télécharger CSV</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT NARROW COLUMN -->
+      <div style="display:flex; flex-direction:column; gap:18px;">
+
+        <!-- DEVICE LOGS (BDD) -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Journal des Événements — BDD</span>
+            <span class="card-badge badge-amber">device_logs</span>
+          </div>
+          <div class="dev-log" id="devLog">
+            {% for log in device_logs %}
+            <div class="log-line">
+              <span class="log-ts">{{ log.time }}</span>
+              <span
+                class="log-lvl {% if log.level == 'INFO' %}lvl-info{% elif log.level == 'WARNING' %}lvl-warning{% else %}lvl-alert{% endif %}">
+                [{{ log.level }}]
+              </span>
+              <span class="log-msg">{{ log.message }}</span>
+            </div>
+            {% else %}
+            <div style="color: var(--muted); padding: 10px;">Aucun événement en base de données.</div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- REGISTERED EMPLOYEES -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Employés Enregistrés</span>
+            <span class="card-badge badge-green">{{ employees|length }} ACTIFS</span>
+          </div>
+          <div class="emp-list">
+            {% for id, emp in employees.items() %}
+            <div class="emp-row" style="padding: 10px 18px;">
+              <div class="emp-avatar {{ emp.color }}" style="width:30px; height:30px; font-size:12px;">{{ emp.initials
+                }}</div>
+              <div class="emp-info">
+                <div class="emp-name" style="font-size:12px;">{{ emp.prenom }} {{ emp.nom }}</div>
+                <div class="emp-id" style="font-size:9px;">{{ id }}</div>
+              </div>
+              <div class="emp-right">
+                <span
+                  class="service-badge {% if emp.service == 'IT' %}svc-it{% elif emp.service == 'Production' %}svc-prod{% elif emp.service == 'Administratif' %}svc-adm{% else %}svc-unkn{% endif %}"
+                  style="font-size:8.5px; padding:1px 5px;">{{ emp.service }}</span>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+
+
+      </div>
+
+    </div>
+  </main>
+
+  <footer>
+    <div class="logo-small">CAR<span>HORIZON</span></div>
+    <div>Système de surveillance interne — Usage exclusivement autorisé au personnel habilité</div>
+    <div>v1.0.0 · Flask 3.0.3 · OpenCV 4.9</div>
+  </footer>
+
+  <script>
+    // Animate camera feed canvases with realistic CCTV look
+    function drawCam(canvasId, hue, label) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let t = 0;
+
+      function noise(x, y, t) {
+        return Math.sin(x * 0.05 + t) * Math.cos(y * 0.04 + t * 0.7) * 0.5 + 0.5;
+      }
+
+      function frame() {
+        const imgId = canvasId === 'cam1' ? 'feedimg1' : 'feedimg2';
+        const imgEl = document.getElementById(imgId);
+        if (imgEl && imgEl.style.display === 'block') {
+          t += 0.05;
+          requestAnimationFrame(frame);
+          return;
+        }
+
+        const w = canvas.width, h = canvas.height;
+        ctx.fillStyle = `hsl(${hue},15%,5%)`;
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.strokeStyle = `hsla(${hue},20%,20%,0.15)`;
+        ctx.lineWidth = 0.5;
+        for (let x = 0; x < w; x += 40) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+        }
+        for (let y = 0; y < h; y += 40) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+        }
+
+        for (let i = 0; i < 3; i++) {
+          const bx = w * (0.2 + i * 0.3) + Math.sin(t * 0.3 + i) * 30;
+          const by = h * 0.5 + Math.cos(t * 0.2 + i * 2) * 40;
+          const r = 80 + Math.sin(t * 0.4 + i) * 20;
+          const g = ctx.createRadialGradient(bx, by, 0, bx, by, r);
+          g.addColorStop(0, `hsla(${hue + i * 30},40%,30%,0.12)`);
+          g.addColorStop(1, 'transparent');
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, w, h);
+        }
+
+        const scanY = (t * 2) % h;
+        ctx.fillStyle = 'rgba(255,255,255,0.03)';
+        ctx.fillRect(0, scanY, w, 2);
+
+        const imgd = ctx.createImageData(w, h);
+        for (let i = 0; i < imgd.data.length; i += 4) {
+          const v = Math.random() * 18;
+          imgd.data[i] = imgd.data[i + 1] = imgd.data[i + 2] = v;
+          imgd.data[i + 3] = 18;
+        }
+        ctx.putImageData(imgd, 0, 0);
+
+        const now = new Date();
+        const ts = now.toLocaleDateString('fr-FR') + ' ' + now.toLocaleTimeString('fr-FR');
+        ctx.font = '11px "Source Code Pro", monospace';
+        ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        ctx.fillText(ts, 10, h - 10);
+        ctx.fillText(label, 10, h - 25);
+
+        t += 0.05;
+        requestAnimationFrame(frame);
+      }
+      frame();
+    }
+
+    drawCam('cam1', 210, 'ENTREE / CAM-01');
+    drawCam('cam2', 140, 'GARAGE / CAM-02');
+
+    // Auto-scroll event logs
+    const log = document.getElementById('devLog');
+    if (log) log.scrollTop = log.scrollHeight;
+
+    // Poll `/api/latest_scan` for real-time access events
+    let lastScanTime = 0;
+
+    function checkLatestScan() {
+      fetch('/api/latest_scan')
+        .then(response => response.json())
+        .then(data => {
+          if (data && data.timestamp > lastScanTime) {
+            if (lastScanTime === 0) {
+              lastScanTime = data.timestamp;
+              return;
+            }
+
+            lastScanTime = data.timestamp;
+
+            const alertBox = document.getElementById('access-alert');
+            const alertStatus = document.getElementById('alert-status');
+            const alertName = document.getElementById('alert-name');
+            const alertBadge = document.getElementById('alert-badge-id');
+
+            if (alertBox && alertStatus && alertName && alertBadge) {
+              const status = data.status;
+              if (status === 'AUTORISE' || status === 'AUTORISÉ') {
+                alertStatus.innerText = 'ACCÈS AUTORISÉ';
+                alertBox.className = 'access-alert-box granted';
+              } else {
+                alertStatus.innerText = 'ACCÈS REFUSÉ';
+                alertBox.className = 'access-alert-box refused';
+              }
+
+              alertName.innerText = data.employee;
+              alertBadge.innerText = data.badge;
+
+              alertBox.style.display = 'block';
+
+              setTimeout(() => {
+                alertBox.style.display = 'none';
+              }, 4000);
+
+              setTimeout(() => {
+                window.location.reload();
+              }, 3500);
+            }
+          }
+        })
+        .catch(err => console.error("Error checking latest scan:", err));
+    }
+
+    // Poll every 1 second
+    setInterval(checkLatestScan, 1000);
+  </script>
+
+</body>
+
+</html>
