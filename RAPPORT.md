@@ -15,6 +15,7 @@ Le système est une application web interne de niveau production, sécurisée et
 5. **La journalisation centralisée** en base MySQL (table `device_logs`) et par fichiers CSV téléchargeables.
 6. **Une interface d'administration** pour gérer les employés et leurs badges depuis le navigateur.
 7. **Une sécurité par mot de passe** pour l'accès au tableau de bord.
+8. **Le suivi de télémétrie IoT via MQTT** : Récupération en temps réel et affichage de la température et d'autres métriques capteurs (humidité, batterie, RSSI) avec un filtrage strict pour n'afficher que les données de la **Société 2** (Application ID `2`).
 
 ---
 
@@ -25,7 +26,8 @@ Le système est une application web interne de niveau production, sécurisée et
 - **Flask (v3.0.3)** : Framework web pour le routage, l'API REST et le rendu des templates.
 - **Gunicorn (v22.0.0)** : Serveur WSGI de production (1 worker, 4 threads). Expose directement l'application sur le port `5001`.
 - **OpenCV (headless)** : Capture des flux RTSP, décodage des QR codes (`cv2.QRCodeDetector`) et détection de silhouettes HOG (`cv2.HOGDescriptor`).
-- **Multi-threading** : Capture vidéo continue et envoi des alertes en threads démons asynchrones pour ne jamais bloquer le flux vidéo.
+- **paho-mqtt (v2.x)** : Client MQTT pour s'abonner au broker LoRaWAN/ChirpStack et écouter les trames montantes (uplinks) des capteurs.
+- **Multi-threading** : Capture vidéo continue, écoute de télémétrie MQTT et envoi des alertes en threads démons asynchrones pour ne jamais bloquer le flux principal.
 
 ### Notifications
 - **Brevo API (v3)** : Envoi des emails d'alerte via l'API transactionnelle REST (HTTP POST). Authentification par clé API. L'accès IPv4 est forcé au niveau de `socket.getaddrinfo` pour contourner le filtrage IPv6 de Brevo.
@@ -56,9 +58,10 @@ Navigateur client
       ▼
 Gunicorn :5001  (192.168.32.35)
       │
-      ├── Flask Routes (login, surveillance, API, admin)
+      ├── Flask Routes (login, surveillance, API, admin, MQTT endpoints)
       ├── Thread 1 — run_badge_scanner()   → Caméra 1 RTSP → QR detect → process_badge_scan()
-      └── Thread 2 — run_intrusion_alarm() → Caméra 2 RTSP → HOG detect → send_alert()
+      ├── Thread 2 — run_intrusion_alarm() → Caméra 2 RTSP → HOG detect → send_alert()
+      └── Thread 3 — start_mqtt_listener() → Ecoute Broker MQTT → Filtre Société 2 → Stockage latest_data
                                                                     │
                                                              Brevo API REST
                                                           (5 destinataires email)
@@ -105,6 +108,14 @@ curl http://192.168.32.35:5001/scan/EMP001
 curl http://192.168.32.35:5001/scan/BADGE-INCONNU
 ```
 
+### Simuler l'envoi de télémétrie MQTT pour la Société 2 :
+```bash
+# Publication d'une trame contenant la température (23.5°C) pour un capteur de la Société 2
+mosquitto_pub -h 10.0.0.11 -p 1883 \
+  -t "application/2/device/A840412051896D52/event/up" \
+  -m '{"deviceInfo": {"applicationId": "2", "applicationName": "societe2", "deviceName": "Capteur-Temp-01", "devEui": "A840412051896D52"}, "time": "2026-06-22T15:00:00Z", "data": {"temperature": 23.5, "humidity": 45.0}}'
+```
+
 ---
 
 ## 6. Difficultés Rencontrées et Solutions Apportées
@@ -116,6 +127,7 @@ curl http://192.168.32.35:5001/scan/BADGE-INCONNU
 | **Blocage vidéo lors des envois d'alertes** | Les appels réseau Brevo sont bloquants et causaient des saccades. | Envois exécutés dans un `threading.Thread(daemon=True)` lancé à la volée. |
 | **Brevo refuse les connexions IPv6** | L'IP IPv6 de la machine n'est pas dans la liste blanche Brevo. | `socket.getaddrinfo` est remplacé temporairement par une version forçant `AF_INET` (IPv4) avant chaque appel API Brevo. |
 | **SMTP Gmail bloquait les connexions** | Gmail exige OAuth2 pour les comptes modernes, les mots de passe simples sont rejetés. | Remplacement de SMTP par l'API transactionnelle REST Brevo — plus fiable et sans gestion de certificat. |
+| **Filtrage multi-entreprises sur broker MQTT** | Risque de fuite de données ou d'affichage de capteurs d'autres entreprises. | Restriction de la souscription par topic à `application/2/device/+/event/up` et double vérification applicative dans le handler de message (test de `applicationId` et `applicationName` dans le payload JSON) pour rejeter tout message n'appartenant pas à la Société 2. |
 
 ---
 
@@ -140,6 +152,7 @@ curl http://192.168.32.35:5001/scan/BADGE-INCONNU
 | mysql-connector-python | 8.4.0 | https://dev.mysql.com/doc/connector-python/en/ |
 | NumPy | < 2.0.0 | https://numpy.org/ |
 | requests | 2.32.3 | https://requests.readthedocs.io/ |
+| paho-mqtt | >= 2.0.0 | https://github.com/eclipse/paho.mqtt.python |
 
 ### Infrastructure & DevOps
 
